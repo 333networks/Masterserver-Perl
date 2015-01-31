@@ -1,0 +1,193 @@
+=========
+
+DESCRIPTION
+  This repository contains the source code which was written by Darkelarious to
+  limit the effects of GameSpy (GameSpy Industries, Inc.) shutting down their 
+  services. Among this service was a so-called "masterserver".
+  
+  Simply said, a masterserver is a program that maintains a list of online game 
+  servers and presents this list to clients (gamers, players) who request the 
+  list of game addresses.
+  
+  The 333networks Masterserver is a software framework that allows 
+  gamers/players to browse for online games  in the same manner as GameSpy 
+  provided this service.
+  
+  More information about the masterserver and variations on the protocol by
+  333networks can be found online at 
+        http://wiki.333networks.com/index.php/MasterServer
+
+REQUIREMENTS
+  - Postgresql or SQLite3
+  - Perl 5.10 or above
+  - The following CPAN modules
+    FCGI
+    DBI
+    DBD::Pg or DBD::SQLite
+    AnyEvent
+    AnyEvent::Handle::UDP
+  - screen (or another terminal multiplexer, optional)
+  
+INSTALL
+
+  THE MASTER SERVER IS WRITTEN ON LINUX. IF YOU WANT TO RUN THE SOFTWARE IN 
+  MICROSOFT WINDOWS OR APPLE OSX, IT MAY NOT WORK WITHOUT MODIFICATIONS.
+  
+  This repository consists of Perl modules and is run in terminal. The software
+  utilizes UDP and TCP connections to receive and send information about game
+  servers. Carefully read through 
+  the code before you start randomly querying other game servers and/or 
+  masterservers.
+  
+  The masterserver stores server addresses in the database. This database must
+  be created manually. The tables to be created can be found in the sql in
+  the folder "data/database". Support for multiple database drivers is slowly
+  being added. Use the database type of choice and created the tables.
+  
+CONFIGURATION
+  The 333networks masterserver comes with options. These options are found in
+  configuration file "data/masterserver-config.pl". Comments in this file give
+  a brief description. Below, the configuration is discussed in further detail.
+  
+  Masterserver HOST information
+  Fill in your contact details here if you want to be able to synchronize with
+  other masterservers. Though the synchronization process also works without
+  your contact details, it is preferred and appreciated if you allow other
+  masterservers to synchronize with you too. In addition, third parties may
+  want to retrieve the status of your masterserver. When remote servers query
+  for your contact information, they can see who hosts this masterserver, which
+  build you are running and which games you currently support.
+  
+  Database login information
+  The masterserver slowly starts to support more and more different database 
+  types. In the module "lib/MasterServer/Databases" you can see which types are
+  currently working. Examples in use (only one option should be used):
+  
+    Postgresql: ['dbi:Pg:dbname=database_name', 'user', 'password']
+    SQLite:     ["dbi:SQLite:dbname=$ROOT/data/database_name.db",'','']
+    MySQL:      ["dbi:mysql:database=database_name;host=localhost;port=3306",
+                  'user','password', {'RaiseError' => 1}]
+  
+  Logging
+  All events are logged by default. Every new beacon, database transaction or 
+  serverlist request is recorded in the logfile. For debugging purposes, this is
+  very useful, but during regular use, the logfile will grow big very fast. With
+  the "suppress" option, log messages can be suppressed from being logged. This
+  option takes the message type, seperated by spaces. To suppress a message
+  type, use the identifier between brackets. Example: 
+    
+    [2015-01-31 17:31:47] [Success] > Connected to the Postgres database.
+  
+  In this message, the timestamp of the message is shown first, followed by the
+  identifier "Success". To suppress this type of message, the following
+  parameter can be set:
+  
+    suppress => " Success "
+  
+  More message types can be suppressed, where the types are seperated by spaces.
+  
+  Network settings
+  The masterserver uses UDP and TCP networking. The default port numbers are 
+  27900 for server beacons (UDP) and 28900 for serverlists (TCP). Home-hosters
+  have to open those firewall ports.
+  Not all games request data in the same format. Until we established how the
+  request for a different datatype is made, we also provide the ability to
+  send data in the alternate (byte) form manually. More games can be added,
+  seperated by spaces.
+  
+  Supported Games & Secure/Validate
+  All GameSpy protocol games communicate according to a protocol that requires
+  servers and clients to authenticate each other. As far as 333networks are 
+  concerned, the authentication ciphers (keys) are confidential and intellectual
+  property. 
+  
+  If you have a configuration file with keys, you can simply import this list
+  at the bottom of the configuration file as shown there. If you do not have the
+  correct ciphers, you can choose to bypass the secure/validate challenge. This
+  also allows hackers and opportunists to provide fake data or request the data
+  without authorization. See option "require_secure_beacons".
+  
+  If you use the proper authentication ciphers, keep in mind that some games, 
+  like Deus Ex, have more than one cipher, or do not support the challenge at 
+  all. Other games may have been modified to counter the vulnerability against
+  long queries. Some UT server have been observed to respond with "Orange" 
+  instead of the correct response. Both situations can be in- or excluded in
+  the "ignore_key" options.
+  
+  Timer & Enable settings
+  There are three methods to add server addresses to the list: by receiving a
+  direct beacon, by validating a pending server and by synchronization. Some of
+  these functions can be disabled from the configuration.
+  
+  Direct beacons can be processed by adding them to the database directly after
+  they validated. When validation is not an option (because missing ciphers), 
+  the masterserver can query the addresses individually, to determine whether
+  they are valid game servers. Change with "beacon_checker_enabled".
+  
+  For 333networks and the site, individual UT servers are queried for their 
+  server statistics information. This service is not really necessary for any 
+  other purpose than showing server information with a few minutes delay on your
+  site. It can be adapted on your own accord to do the same for other games.
+  You should keep "utserver_query_enabled" on 0 unless you have specific use
+  for the gathered data.
+  
+  The processes are all started with a one minute delay. This allows the master-
+  server to receive most beacons (every minute). All times in the configuration
+  file are listed in [s]econds.
+
+  Query UCC Applets
+  In addition, other UCC masterserver applets can be queried for more server
+  addresses. This should not be done without permission of the UCC applet
+  hosts, it's impolite to do so without asking. The new servers are added to
+  the "pending" list, where they wait to be queried individually as described
+  above. If "beacon_checker_enabled" is '0', this function will probably not
+  work properly. Change with "master_applet_enabled".
+  
+  Synchronization settings  
+  Synchronization between masterservers allows you to receive the list from 
+  other masterservers, but in return, you allow other masterservers to query you 
+  too, with the same request. If you do not wish this to happen, synchronization 
+  can be disabled. Newly received servers are added to the "pending" list as 
+  described above. Change with "sync_enabled".
+  
+RUNNING
+  After all CPAN modules have been installed and all options have been reviewed
+  in the configuration file, the masterserver can be started with the following 
+  command:
+   
+    screen -dmS "UTMSE" ./util/masterserver.pl
+  
+  Keep in mind that this configuration of database, master server and website
+  is designed for 333networks. If you want to set up your own system for any
+  game other than Unreal Tournament, you may want to look at other repositories
+  on 333networks how this is achieved. See also http://git.333networks.com
+  
+  333networks is not responsible for your masterserver querying (or spamming)
+  game servers and/or masterservers.
+
+COPYING
+  Copyright (c) 2005-2015 Darkelarious & 333networks.com
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+
+  The above copyright notice and this permission notice shall be included
+  in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  
+  All Unreal Tournament related materials are based on Epic Games' Unreal 
+  Tournament. UNREAL (c)1999 Epic Megagames, Inc. All Rights Reserved. 
+  Distributed by GT Interactive Software, Inc. under license. UNREAL and the 
+  UNREAL logo are registered trademarks of Epic Megagames, Inc.
