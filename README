@@ -26,6 +26,7 @@ REQUIREMENTS
     DBD::Pg or DBD::SQLite
     AnyEvent
     AnyEvent::Handle::UDP
+    IP::Country
   - screen (or another terminal multiplexer, optional)
   
 INSTALL
@@ -65,15 +66,13 @@ CONFIGURATION
   
     Postgresql: ['dbi:Pg:dbname=database_name', 'user', 'password']
     SQLite:     ["dbi:SQLite:dbname=$ROOT/data/database_name.db",'','']
-    MySQL:      ["dbi:mysql:database=database_name;host=localhost;port=3306",
-                  'user','password', {'RaiseError' => 1}]
   
   Logging
   All events are logged by default. Every new beacon, database transaction or 
   serverlist request is recorded in the logfile. For debugging purposes, this is
   very useful, but during regular use, the logfile will grow big very fast. With
   the "suppress" option, log messages can be suppressed from being logged. This
-  option takes the message type, seperated by spaces. To suppress a message
+  option takes the message type, separated by spaces. To suppress a message
   type, use the identifier between brackets. Example: 
     
     [2015-01-31 17:31:47] [Success] > Connected to the Postgres database.
@@ -85,6 +84,9 @@ CONFIGURATION
     suppress => " Success "
   
   More message types can be suppressed, where the types are seperated by spaces.
+  If you want to log a lot of events, you could consider rotating the logs every
+  day, week, month or year. The 'log_rotate' allows you to store events in
+  different files.
   
   Network settings
   The masterserver uses UDP and TCP networking. The default port numbers are 
@@ -157,13 +159,13 @@ RUNNING
    
     screen -dmS "UTMSE" ./util/masterserver.pl
   
-  Keep in mind that this configuration of database, master server and website
+  Keep in mind that this configuration of database, masterserver and website
   is designed for 333networks. If you want to set up your own system for any
   game other than Unreal Tournament, you may want to look at other repositories
-  on 333networks how this is achieved. See also http://git.333networks.com
+  on 333networks HOW this is achieved. See also http://git.333networks.com
   
   333networks is not responsible for your masterserver querying (or spamming)
-  game servers and/or masterservers.
+  game servers and/or masterservers. Your configuration is YOUR responsibility!
 
 COPYING
   Copyright (c) 2005-2015 Darkelarious & 333networks.com
