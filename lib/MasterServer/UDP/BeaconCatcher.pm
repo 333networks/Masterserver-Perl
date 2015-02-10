@@ -16,7 +16,7 @@ sub beacon_catcher {
   my $self = shift;
   
   # module startup log
-  $self->log("loader","Loading UDP Beacon Catcher.");
+  $self->log("load","Loading UDP Beacon Catcher.");
   
   # UDP server
   my $udp_server; 
@@ -30,7 +30,7 @@ sub beacon_catcher {
   );
   
   # display that the server is up and listening for beacons
-  $self->log("ok", "Listening for UT Beacons on port $self->{beacon_port}.");
+  $self->log("info", "Listening for UT Beacons on port $self->{beacon_port}.");
   
   # allow object to exist beyond this scope. Objects have ambitions too.
   return $udp_server;

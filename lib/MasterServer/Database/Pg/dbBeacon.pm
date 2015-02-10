@@ -5,7 +5,12 @@ use strict;
 use warnings;
 use Exporter 'import';
 
-our @EXPORT = qw| add_beacon get_pending_beacon remove_pending set_direct_beacon |;
+our @EXPORT = qw| add_beacon
+                  remove_pending 
+                  set_direct_beacon 
+                  get_pending_beacon 
+                  get_pending_info
+                  get_next_pending |;
 
 ## Update beacon in serverlist or pending list. Add if beacon does not exist in
 ## either list. Return 0,1,2 if success in adding or -1 on error
@@ -24,7 +29,7 @@ sub add_beacon {
       undef, lc $gamename, $ip, $heartbeat);
   
   # notify
-  $self->log("updated", "beacon heartbeat for $ip:$heartbeat") if ($u > 0);
+  $self->log("update", "beacon heartbeat for $ip:$heartbeat") if ($u > 0);
   
   # if serverlist was updated return 0
   return 0 if ($u > 0);
@@ -41,7 +46,7 @@ sub add_beacon {
       undef, $beaconport, lc $gamename, $secure, $ip, $heartbeat);  
                             
   # notify
-  $self->log("updated", "beacon heartbeat $ip:$beaconport pending $gamename:$heartbeat") if ($u > 0);
+  $self->log("update", "beacon heartbeat $ip:$beaconport pending $gamename:$heartbeat") if ($u > 0);
   
   # beacon was already in pending list and was updated
   return 1 if ($u > 0);
@@ -53,7 +58,7 @@ sub add_beacon {
       undef, $ip, $beaconport, $heartbeat, lc $gamename, $secure);
                       
    # notify 
-   $self->log("added", "beacon heartbeat $ip:$beaconport pending $gamename:$heartbeat") if ($u > 0);
+   $self->log("add", "beacon heartbeat $ip:$beaconport pending $gamename:$heartbeat") if ($u > 0);
    
    # it was added to pending
    return 2 if ($u > 0);
@@ -62,20 +67,6 @@ sub add_beacon {
   $self->log("error", "an error occurred adding beacon $ip:$beaconport with $gamename:$heartbeat to the pending list");
   return -1;
 }
-
-
-##   Get pending server by ip, beacon port.
-sub get_pending_beacon {
-  my ($self, $ip, $port) = @_;
-  
-  # if address is in list, update the timestamp
-  return $self->{dbh}->selectall_arrayref(
-            "SELECT * FROM pending
-             WHERE ip = ? 
-             AND beaconport = ?",
-            undef, $ip, $port)->[0];
-}
-
 
 ##  server checks out, remove entry from the pending list.
 sub remove_pending {
@@ -108,7 +99,7 @@ sub set_direct_beacon {
                             undef, $ip, $port);
 
   # notify
-  $self->log("updated", "$ip:$port is a direct beacon.") if ($u > 0);
+  $self->log("update", "$ip:$port is a direct beacon.") if ($u > 0);
   
   # if found, updated; done
   return 0 if ($u > 0);
@@ -118,6 +109,43 @@ sub set_direct_beacon {
   return -1;
 }
 
+
+
+##   Get pending server by ip, beacon port.
+sub get_pending_beacon {
+  my ($self, $ip, $port) = @_;
+  
+  # if address is in list, update the timestamp
+  return $self->{dbh}->selectall_arrayref(
+            "SELECT * FROM pending
+             WHERE ip = ? 
+             AND beaconport = ?",
+            undef, $ip, $port)->[0];
+}
+
+##   Same as get_pending_beacon, but with heartbeat port as identifier
+sub get_pending_info {
+  my ($self, $ip, $port) = @_;
+  
+  # if address is in list, update the timestamp
+  return $self->{dbh}->selectall_arrayref(
+            "SELECT * FROM pending
+             WHERE ip = ? 
+             AND heartbeat = ?",
+            undef, $ip, $port)->[0];
+}
+
+## Get server info from any entry with an id higher than the provided one.
+sub get_next_pending {
+  my ($self, $id) = @_;
+  
+  # get 1 pending id that is older than 15s
+  return $self->{dbh}->selectall_arrayref(
+            "SELECT id, ip, heartbeat, secure FROM pending
+             WHERE added < (NOW() - INTERVAL '15 SECONDS')
+             AND id > ?
+             ORDER BY id ASC LIMIT 1", undef, $id)->[0];
+}
 
 
 1;

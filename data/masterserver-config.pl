@@ -54,7 +54,7 @@ our %S = (
   printlog  => 1, 
   
   # which messages do you NOT want to see in the logs (and screen)?
-  suppress  => " module debug ",
+  suppress  => "debug_spam load hostname udp update add remove",
 
 ################################################################################
 # Network settings                                                             #
@@ -81,8 +81,8 @@ our %S = (
   # Disable checks, all games pass as validated. (0=validate, 1=allow all)
   debug_validate => 0,
   
-  # accept only servers that pass the secure/validate challenge
-  require_secure_beacons => 0,
+  # accept only servers that pass the secure/validate challenge, takes longer
+  require_secure_beacons => 1,
   
   # ignore keys from games that use multiple keys or do not support keys at all
   ignore_beacon_key   => "deusex ut",
@@ -109,7 +109,7 @@ our %S = (
   # "info". Execute at least twice per hour, to avoid time-outs in own data.
   # disabling may break support for certain games.
   beacon_checker_enabled  => 1,
-  beacon_checker_time     => [80, 0.25, 1800],
+  beacon_checker_time     => [80, 0.5, 1800],
 
   # Collect server information for the 333networks main site. Identical
   # mechanism as the Beacon Checker. Disable when not interested in UT info.

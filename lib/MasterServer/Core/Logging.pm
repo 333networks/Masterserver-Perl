@@ -25,10 +25,7 @@ sub log {
   my $daily   = strftime('-%Y-%m-%d',localtime);
   
   # is the message suppressed in config?
-  if (defined $type && $self->{suppress} =~ m/$type/i){
-    print "[$time] [SUPPRESSED] [$type] $msg\n"; #FIXME
-   return; # return if <$>
-  }
+  return if (defined $type && $self->{suppress} =~ m/$type/i);
   
   # determine filename
   my $f = "MasterServer-333networks";

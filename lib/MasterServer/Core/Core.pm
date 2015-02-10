@@ -65,13 +65,13 @@ sub main {
     if ( "Pg SQLite" =~ m/$db_type[1]/i) {
       
       # inform us what DB we try to load
-      $self->log("loader","Loading $db_type[1] database module.");
+      $self->log("load","Loading $db_type[1] database module.");
     
       # load dbd and tables/queries for this db type
       MasterServer::load_recursive("MasterServer::Database::$db_type[1]");
       
       # Connect to database
-      $self->{dbh} = $self->database_login(); #FIXME!!!!
+      $self->{dbh} = $self->database_login();
     }
     else {
       # raise error and halt
@@ -83,6 +83,9 @@ sub main {
   
   # start the listening service (listen for UDP beacons)
   $self->{scope}->{beacon_catcher} = $self->beacon_catcher();
+  
+  # start the beacon checker service (query entries from the pending list)
+  $self->{scope}->{beacon_checker} = $self->beacon_checker() if ($self->{beacon_checker_enabled});
   
   
   $self->log("info", "All modules loaded. Starting...");

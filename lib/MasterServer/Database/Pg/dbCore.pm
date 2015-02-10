@@ -21,7 +21,7 @@ sub database_login {
   # verify that the database connected
   if (defined $dbh) {
     # log the event
-    $self->log("database","Connected to the Postgres database.");
+    $self->log("load","Connected to the Postgres database.");
     
     # turn on error printing
     $dbh->{printerror} = 1;
