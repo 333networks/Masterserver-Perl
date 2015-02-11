@@ -9,15 +9,19 @@ use Exporter 'import';
 
 our @EXPORT = qw| valid_address ip2country |;
 
+################################################################################
 ## return the abbreviated country based on IP
+################################################################################
 sub ip2country {
 my ($self, $ip) = @_;
   my $reg = IP::Country::Fast->new();
   return $reg->inet_atocc($ip);
 }
 
+################################################################################
 ## Verify whether a given domain name or IP address and port are valid.
-## returns true/false if valid ip + port
+## returns 1/0 if valid/invalid ip + port
+################################################################################
 sub valid_address {
   my ($self, $a, $p) = @_;
   

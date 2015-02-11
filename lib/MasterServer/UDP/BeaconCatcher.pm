@@ -9,9 +9,10 @@ use Exporter 'import';
 
 our @EXPORT = qw| beacon_catcher on_beacon_receive|;
 
-##
-## Receive UDP beacons according the \heartbeat\7778\gamename\ut\ format 
-## where "ut" depicts the game and 7778 the query port of the game.
+################################################################################
+## Receive UDP beacons with \heartbeat\7778\gamename\ut\ format 
+## where "ut" is the game name and 7778 the query port of the server.
+################################################################################
 sub beacon_catcher {
   my $self = shift;
   
@@ -36,7 +37,9 @@ sub beacon_catcher {
   return $udp_server;
 }
 
-## process (new) beacons
+################################################################################
+## Determine the concent of the received information and process it.
+################################################################################
 sub on_beacon_receive {
   # $self, beacon address, handle, packed client address
   my ($self, $b, $udp, $pa) = @_; 
@@ -59,7 +62,7 @@ sub on_beacon_receive {
   $self->process_udp_beacon($udp, $pa, $b, $peer_addr, $port) 
     if ($b =~ m/\\heartbeat\\/ && $b =~ m/\\gamename\\/);
   
-  # or if this is a secure response, verify the response code and add mark it verified
+  # or if this is a secure response, verify the response
   $self->process_udp_validate($b, $peer_addr, $port, undef) 
     if ($b =~ m/\\validate\\/);
 }

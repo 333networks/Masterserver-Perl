@@ -54,8 +54,9 @@ our %S = (
   printlog  => 1, 
   
   # which messages do you NOT want to see in the logs (and screen)?
-  suppress  => "debug_spam load hostname udp update add remove",
-
+  suppress  => "debug_spam load hostname udp add update delete secure beacon",
+  #suppress  =>  "none",
+  
 ################################################################################
 # Network settings                                                             #
 #                                                                              #
@@ -82,7 +83,7 @@ our %S = (
   debug_validate => 0,
   
   # accept only servers that pass the secure/validate challenge, takes longer
-  require_secure_beacons => 1,
+  require_secure_beacons => 0,
   
   # ignore keys from games that use multiple keys or do not support keys at all
   ignore_beacon_key   => "deusex ut",
@@ -114,7 +115,7 @@ our %S = (
   # Collect server information for the 333networks main site. Identical
   # mechanism as the Beacon Checker. Disable when not interested in UT info.
   utserver_query_enabled  => 1,
-  utserver_query_time     => [90, 0.125, 240],
+  utserver_query_time     => [90, 0.15, 240],
   
   # Maintenance duties like cleaning out old servers/players
   maintenance_time => [3600, 60],

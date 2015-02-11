@@ -9,8 +9,10 @@ our @EXPORT = qw| add_to_serverlist
                   update_serverlist
                   get_next_server |;
 
-## beacon was verified or otherwise accepted and will noe now be added to the 
+################################################################################
+## beacon was verified or otherwise accepted and will now be added to the 
 ## serverlist.
+################################################################################
 sub add_to_serverlist {
   my ($self, $ip, $port, $gamename) = @_;
   
@@ -44,13 +46,9 @@ sub add_to_serverlist {
 }
 
 ################################################################################
-##
-##   Subroutine update_serverlist
-##
-## Same as add_to_serverlist (above), but does not add the server to serverlist
-## if it does not exist in serverlist.
-##
-## Args: ip, port %info
+## same as add_to_serverlist above, but does not add the server to serverlist
+## if it does not exist in serverlist. it must be added by another function
+## first.
 ################################################################################
 sub update_serverlist {
   my ($self, $ip, $port, $s) = @_;
@@ -69,7 +67,7 @@ sub update_serverlist {
           $ip, $port);
 
   # notify
-  $self->log("update", "server $ip:$port was updated: $s->{hostname}") if ($u > 0);
+  $self->log("update", "server $ip:$port info updated") if ($u > 0);
   
   # return 0 if updated
   return 0 if ($u > 0);
@@ -80,15 +78,9 @@ sub update_serverlist {
 }
 
 ################################################################################
-##
-##   Subroutine get_next_server
-##
-##  Get a server address of the next server in line to be 
-##  queried for game info. Query must be older than 30 seconds (in case it just
-##  got added) and not older than 3 hours.
-##
-##  Args: $id --> id of a server address entry
-##  Returns: hash {id, ip, port} of the NEXT entry in line.
+## get a server address of the next server in line to be queried for game info. 
+## query must be older than 30 seconds (in case it just got added) and not 
+## older than 3 hours.
 ################################################################################
 sub get_next_server {
   my ($self, $id) = @_;

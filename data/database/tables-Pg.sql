@@ -14,6 +14,13 @@ CREATE TABLE serverlist(
   updated         timestamptz      NOT NULL DEFAULT NOW()
 );
 
+-- TODO
+CREATE TABLE user_stats(
+  gamename        VARCHAR(50)      NOT NULL DEFAULT ' ',
+  requests        INTEGER          NOT NULL DEFAULT 1,
+  beacons         INTEGER          NOT NULL DEFAULT 1
+);
+
 CREATE TABLE pending(
   id              SERIAL    UNIQUE NOT NULL PRIMARY KEY,
   ip              inet             NOT NULL DEFAULT '0.0.0.0',

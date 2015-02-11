@@ -5,36 +5,31 @@ use strict;
 use warnings;
 use AnyEvent;
 use Exporter 'import';
-use Data::Dumper 'Dumper';
 use DBI;
 
 our @EXPORT = qw | halt main |;
 
-##
-## Halt
-## Handle shutting down the program for whatever reason.
+################################################################################
+## Handle shutting down the program in case a fatal error occurs.
+## TODO: lockfile!
+################################################################################
 sub halt {
   my $self = shift;
   
-  # When other processes are still 
-  # running, set all other scopes 
-  # to null/undef?
-
   # log shutdown
   $self->log("stop", "Stopping the masterserver now.");
   
+  # clear all other timers, network servers, etc
+  $self->{dbh}->disconnect() if (defined $self->{dbh});
+  $self->{scope} = undef;
+  
   # and send signal to condition var
   $self->{must_halt}->send;
-  
-  # allow everything to be written to the logs
-  sleep(2);
-  
-  exit;
 }
 
-##
-## Main
-## Initialize all processes and start them
+################################################################################
+## Initialize all processes and start various functions
+################################################################################
 sub main {
   my $self = shift;
   
@@ -47,21 +42,19 @@ sub main {
   # keep several objects alive outside their original scope
   $self->{scope} = ();
   
-  
-  # Startup procedure
+  # startup procedure information
   $self->log("info", "333networks Master Server Application.");
   $self->log("info", "Build:   $self->{build_type}");
   $self->log("info", "Version: $self->{build_version}");
-  $self->log("info", "   Written by $self->{build_author}");
+  $self->log("info", "Written by $self->{build_author}");
   $self->log("info", "Logs are written to $self->{log_dir}");
   
-  
   # determine the type of database and load the appropriate module
-  { # start db type
+  {
     # read from login
     my @db_type = split(':', $self->{dblogin}->[0]);
 
-    # format supported (yet)?
+    # format supported?
     if ( "Pg SQLite" =~ m/$db_type[1]/i) {
       
       # inform us what DB we try to load
@@ -72,14 +65,16 @@ sub main {
       
       # Connect to database
       $self->{dbh} = $self->database_login();
+      
+      # and test whether we succeeded.
+      $self->halt() unless (defined $self->{dbh});
     }
     else {
       # raise error and halt
       $self->log("fatal", "The masterserver could not determine the chosen database type.");
       $self->halt();
     }
-  }  # end db type
-  
+  }
   
   # start the listening service (listen for UDP beacons)
   $self->{scope}->{beacon_catcher} = $self->beacon_catcher();
@@ -87,64 +82,19 @@ sub main {
   # start the beacon checker service (query entries from the pending list)
   $self->{scope}->{beacon_checker} = $self->beacon_checker() if ($self->{beacon_checker_enabled});
   
+  # query other masterserver applets to get more server addresses
+  $self->{scope}->{ucc_applet_query} = $self->ucc_applet_query_scheduler() if ($self->{master_applet_enabled});  
   
-  $self->log("info", "All modules loaded. Starting...");
-
   
-=pod  
-
-  ##############################################################################
-  ##
-  ##   Initiate Scheduled tasks
-  ##
-  ##   Main Tasks
-  ##      beacon_catcher   (udp server)
-  ##      beacon_checker   (udp client, timer)
-  ##      browser_server   (tcp server)
-  ##      
-  ##   Synchronization
-  ##      ucc_applet_query (tcp client, timer)
-  ##      syncer_scheduler (tcp client, timer)
-  ##
-  ##   333networks website specific
-  ##      ut_server_query  (udp client, timer)
-  ##
-  ##   Core Functions
-  ##      maintenance      (timer, dbi)
-  ##      statistics       (timer, dbi)
-  ##
-  ## (store objects in hash to keep them alive outside their own scopes)
-  ##############################################################################
-  
-  ## servers
-   $ae{beacon_catcher}    = $self->beacon_catcher();
-   $ae{beacon_checker}    = $self->beacon_checker_scheduler();
-   $ae{browser_server}    = $self->browser_server();
-
-   # synchronizing
-   $ae{ucc_applet_query}  = $self->ucc_applet_query_scheduler();
-   $ae{syncer_scheduler}  = $self->syncer_scheduler();
-
-   # status info for UT servers (333networks site)
-   $ae{ut_server_scheduler} = $self->ut_server_scheduler();  
-   
-   # maintenance
-   $ae{maintenance_runner}  = $self->maintenance_runner();
-   $ae{stats_runner}        = $self->stats_runner();
-=cut
-
-
-
-
-
-
-
-
-
+  # all modules loaded. Running...
+  $self->log("info", "All modules loaded. Masterserver is now running.");
 
   # prevent main program from ending prematurely
   $self->{must_halt}->recv;
-  $self->log("stop", "Logging off. Enjoy your day.");
+  $self->log("stop", "Shutting down NOW!");
+
+  # time for a beer.  
+  exit;
 }
 
 1;

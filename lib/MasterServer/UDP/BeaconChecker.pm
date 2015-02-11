@@ -3,16 +3,12 @@ package MasterServer::UDP::BeaconChecker;
 
 use strict;
 use warnings;
-use Encode;
 use AnyEvent::Handle::UDP;
 use Exporter 'import';
 
 our @EXPORT = qw| beacon_checker query_udp_server|;
 
 ################################################################################
-##
-##   Beacon Checker Module
-##
 ##   When addresses are stored in the 'pending' list, they are supposed to be
 ##   queried immediately with the secure/validate challenge to testify that
 ##   the server is genuine and alive.
@@ -21,26 +17,19 @@ our @EXPORT = qw| beacon_checker query_udp_server|;
 ##   servers are verified with a secure-challenge on their heartbeat ports, 
 ##   which are designed to respond to secure queries, as well as status queries.
 ##
-##   Querying pending servers should only happen when beacons are already 
-##   several seconds old. We do not want to interfere with the existing 
-##   construction where servers respond immediately.
-##
 ##   Addresses collected by other scripts, whether from the UCC applet or manual
-##   input via the website, are added to the pending query table. It is more 
+##   input via the website, are added to the pending list. It is more 
 ##   important to verify pending beacons and new server addresses, than to 
 ##   update the status of existing addresses. Therefore, pending addresses are
 ##   prioritized.
-##
 ################################################################################
 sub beacon_checker {
   my $self = shift;
   $self->log("load", "UDP Beacon Checker is loaded.");
 
   # queue -- which address is next in line?
-  my %q = ( pending_id    => 0,
-            server_id     => 0,
-            start_time    => time+$self->{beacon_checker_time}[0]-1, #time+grace
-          );
+  my %q = ( pending_id => 0, server_id => 0,
+            start_time => time+$self->{beacon_checker_time}[0]-1); #time+grace
 
   # go through all servers one by one, new and old
   my $server_info = AnyEvent->timer (
@@ -56,15 +45,9 @@ sub beacon_checker {
           $q{start_time} = time;
         }
         
-        # id, ip, port reference of the server to be queried
-        my $n;
-        
-        #
-        # Pending Servers
-        #
         # See if there are pending servers, and use existing secure string for
         # the challenge.
-        $n = $self->get_next_pending($q{pending_id});
+        my $n = $self->get_next_pending($q{pending_id});
         
         # if any entries were found, proceed
         if ( $n->[0] ) {
@@ -75,7 +58,7 @@ sub beacon_checker {
           # query the server
           $self->query_udp_server($n->[1], $n->[2], $n->[3]);
           
-          # work done. Wait for the next round for the next task.
+          # work done. Wait for the next round for the next timer tick.
           return;
         }
         
@@ -88,7 +71,7 @@ sub beacon_checker {
           # next server id will be > $n
           $q{server_id} = $n->[0];
           
-          # query the server
+          # query the server (no secure string)
           $self->query_udp_server($n->[1], $n->[2], "");
           
           # work done. Wait for the next round for the next task.
@@ -99,29 +82,23 @@ sub beacon_checker {
         # added, they are immediately queried on the next round.
         # From here on, just count down until the cycle is complete.
 
-        # DEBUG (spams badly)
+        # debug (spams badly)
         $self->log("debug_spam", "Checker timer: t=".(time - $q{start_time}));
     }
   );
   
+  # at the start of the module, remind host how often this happens
   $self->log("info", "Verifying servers every $self->{beacon_checker_time}[2] seconds.");
   
-  # return the timer to keep it alive outside of scope
+  # return the timer object to keep it alive outside of this scope
   return $server_info;
 }
 
 
 ################################################################################
-##
-##   UDP Server Query function
-##
-##   Get the server status from any server over UDP and store the 
-##   received information in the database.
-##
-##   $secure determines the type of query: secure/pending or information
-##
-##   Args: $ip, $port, payload
-##   Function is called by AnyEvent->timer() above
+## Get the server status from any server over UDP and store the received 
+## information in the database. $secure determines the type of query: 
+## secure/pending or information.
 ################################################################################
 sub query_udp_server {
   my ($self, $ip, $port, $secure) = @_;
@@ -146,7 +123,8 @@ sub query_udp_server {
       if ($buf =~ m/\\validate\\/){
         $self->process_udp_validate($buf, $ip, undef, $port);
       }
-      # if gamename, ver, hostname and hostport are available, it should have been \basic\info
+      # if gamename, ver, hostname and hostport are available, it should 
+      # have been \basic\info
       elsif ($buf =~ m/\\gamename\\/ && $buf =~ m/\\gamever\\/ 
           && $buf =~ m/\\hostname\\/ && $buf =~ m/\\hostport\\/) {
         $self->process_query_response($buf, $ip, $port);

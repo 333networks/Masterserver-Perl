@@ -8,9 +8,8 @@ use Exporter 'import';
 our @EXPORT = qw| database_login |;
 
 ################################################################################
-## database_login
 ## login to the database with credentials provided in the config file.
-## returns dbh object
+## returns dbh object or quits application on error.
 ################################################################################
 sub database_login {
   my $self = shift;
@@ -20,6 +19,7 @@ sub database_login {
   
   # verify that the database connected
   if (defined $dbh) {
+    
     # log the event
     $self->log("load","Connected to the Postgres database.");
     
@@ -37,7 +37,7 @@ sub database_login {
     $self->halt();
   }
   
-  # unreachable
+  # return empty element
   return undef;
 }
 

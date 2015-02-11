@@ -9,10 +9,8 @@ use Exporter 'import';
 our @EXPORT = qw| log |;
 
 ################################################################################
-#
-# Log to file and print to screen.
-# args: $self, message_type, message
-#
+## Log to file and print to screen.
+## args: $self, message_type, message
 ################################################################################
 sub log {
   my ($self, $type, $msg) = @_;

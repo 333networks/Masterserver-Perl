@@ -9,9 +9,9 @@ our @EXPORT = qw| version |;
 
 
 ################################################################################
-#
-# Version information
-#
+##
+## Version information
+##
 ################################################################################
 sub version {
   my $self = shift;
@@ -29,10 +29,10 @@ sub version {
   $self->{build_type}     = "333networks Masterserver-Perl";
   
   # version
-  $self->{build_version}  = "0.2";
+  $self->{build_version}  = "2.0.4";
   
   # date yyyy-mm-dd
-  $self->{build_date}     = "2015-01-31";
+  $self->{build_date}     = "2015-02-11";
   
   #author, email
   $self->{build_author}   = "Darkelarious, darkelarious\@333networks.com";

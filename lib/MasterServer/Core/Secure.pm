@@ -8,7 +8,10 @@ use Exporter 'import';
 
 our @EXPORT = qw| secure_string validated_beacon validated_request validate_string charshift get_validate_string|;
 
-## generate a random string of 6 characters long for the \secure\ challenge
+################################################################################
+# generate a random string of 6 characters long for the \secure\ challenge
+# returns string
+################################################################################
 sub secure_string {
   # spit out a random string, only uppercase characters
   my @c = ('A'..'Z');
@@ -19,7 +22,10 @@ sub secure_string {
   return $s;
 }
 
-## Check if beacon has a valid response.
+################################################################################
+# authenticate the \validate\ response for the \secure\ challenge. 
+# returns 1 on valid response, 0 on invalid
+################################################################################
 sub validated_beacon {
   my ($self, $gamename, $secure, $enctype, $validate) = @_;
   
@@ -30,15 +36,18 @@ sub validated_beacon {
   $enctype = 0 unless $enctype;
   
   if ($self->{ignore_beacon_key} =~ m/$gamename/i){
-    $self->log("secure", "Ignored beacon validation for $gamename.");
+    $self->log("secure", "ignored beacon validation for $gamename");
     return 1;
   }
   
-  # compare received response with challenge
+  # compare received response with expected response
   return ($self->validate_string($gamename, $secure, $enctype) eq $validate) || 0;
 }
 
-## Check if request has valid response
+################################################################################
+# authenticate the \validate\ response for the \secure\ challenge. 
+# returns 1 on valid response, 0 on invalid
+################################################################################
 sub validated_request {
   my ($self, $gamename, $secure, $enctype, $validate) = @_;
   
@@ -50,31 +59,29 @@ sub validated_request {
   
   # ignore games and beacons that are listed
   if ($self->{ignore_browser_key} =~ m/$gamename/i){
-    $self->log("secure", "Ignored browser validation for $gamename.");
+    $self->log("secure", "ignored browser validation for $gamename");
     return 1;
   }
   
-  # compare received response with challenge
+  # compare received response with expected response
   return ($self->validate_string($gamename, $secure, $enctype) eq $validate) || 0;
 }
 
 ################################################################################
-# calculate the \validate\ response for the \secure\ challenge. 
-# args: gamename, secure_string, encryption type
+# process the validate string as a response to the secure challenge
 # returns: validate string (usually 8 characters long)
-# !! requires cipher hash to be configured in config! (imported or else)
 ################################################################################
 sub validate_string {
   my ($self, $game, $sec, $enc)  = @_;
   
   # get cipher from gamename
-  my $cip = $self->{game}->{$game}->{key} || "XXXXXX";
+  my $cip = $self->{game}->{$game}->{key} || "000000";
   
-  # don't accept challenge longer than 16 characters -- usually h@xx0rs
+  # don't accept challenge longer than 16 characters (because vulnerable in UE)
   if (length $sec > 16) {
-    return "0"}
+    return "invalid!"}
   
-  # check for valid encryption choises
+  # check for valid encryption choices
   my $enc_val = (defined $enc && 0 <= $enc && $enc <= 2) ? $enc : 0;
   
   # calculate and return validate string
@@ -98,7 +105,7 @@ sub charshift {
 }
 
 ################################################################################
-# algorithm to calculate the response to the secure/validate query. processes
+# algorithm to process the response to the secure/validate query. processes
 # the secure_string and returns the challenge_string with which GameSpy secure
 # protocol authenticates games.
 #
@@ -111,7 +118,7 @@ sub charshift {
 #
 # args: game cipher, 6-char challenge string, encryption type
 # returns: validate string (usually 8 characters long)
-# !! requires cipher hash to be configured in config! (imported or else)
+# !! requires cipher hash to be configured in config! (imported or otherwise)
 ################################################################################
 sub get_validate_string {
   my ($self, $cipher_string, $secure_string, $enctype) = @_;
