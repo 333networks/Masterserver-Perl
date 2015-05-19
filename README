@@ -20,13 +20,13 @@ DESCRIPTION
 REQUIREMENTS
   - Postgresql or SQLite3
   - Perl 5.10 or above
-  - The following CPAN modules
-    FCGI
-    DBI
-    DBD::Pg or DBD::SQLite
-    AnyEvent
-    AnyEvent::Handle::UDP
-    IP::Country
+  - The following CPAN modules:
+      FCGI
+      DBI
+      DBD::Pg or DBD::SQLite
+      AnyEvent
+      AnyEvent::Handle::UDP
+      IP::Country
   - screen (or another terminal multiplexer, optional)
   
 INSTALL
@@ -36,21 +36,23 @@ INSTALL
   
   This repository consists of Perl modules and is run in terminal. The software
   utilizes UDP and TCP connections to receive and send information about game
-  servers. Carefully read through 
-  the code before you start randomly querying other game servers and/or 
-  masterservers.
+  servers. Carefully read through the code and documentation before you start 
+  randomly querying other game servers and/or masterservers.
   
   The masterserver stores server addresses in the database. This database must
-  be created manually. The tables to be created can be found in the sql in
-  the folder "data/database". Support for multiple database drivers is slowly
-  being added. Use the database type of choice and created the tables.
+  be created manually. SQLite3 users should not forget to chmod the database 
+  file with read/write access. The tables to be created can be found in the sql 
+  in the folder "data/database". Support for multiple database drivers is 
+  slowly being added. Use the database type of choice and created the tables.
   
 CONFIGURATION
+
   The 333networks masterserver comes with options. These options are found in
   configuration file "data/masterserver-config.pl". Comments in this file give
   a brief description. Below, the configuration is discussed in further detail.
   
   Masterserver HOST information
+  
   Fill in your contact details here if you want to be able to synchronize with
   other masterservers. Though the synchronization process also works without
   your contact details, it is preferred and appreciated if you allow other
@@ -60,6 +62,7 @@ CONFIGURATION
   build you are running and which games you currently support.
   
   Database login information
+  
   The masterserver slowly starts to support more and more different database 
   types. In the module "lib/MasterServer/Databases" you can see which types are
   currently working. Examples in use (only one option should be used):
@@ -68,36 +71,40 @@ CONFIGURATION
     SQLite:     ["dbi:SQLite:dbname=$ROOT/data/database_name.db",'','']
   
   Logging
+  
   All events are logged by default. Every new beacon, database transaction or 
   serverlist request is recorded in the logfile. For debugging purposes, this is
-  very useful, but during regular use, the logfile will grow big very fast. With
+  very useful, but for regular use, the logfile will grow big very fast. With
   the "suppress" option, log messages can be suppressed from being logged. This
   option takes the message type, separated by spaces. To suppress a message
   type, use the identifier between brackets. Example: 
     
-    [2015-01-31 17:31:47] [Success] > Connected to the Postgres database.
+    [2015-05-19 17:31:47] [load] > Connected to the Postgres database.
   
   In this message, the timestamp of the message is shown first, followed by the
   identifier "Success". To suppress this type of message, the following
   parameter can be set:
   
-    suppress => " Success "
+    suppress => " load "
+    suppress => " load beacon secure hostname "
   
-  More message types can be suppressed, where the types are seperated by spaces.
+  More message types can be suppressed, where the types are separated by spaces.
   If you want to log a lot of events, you could consider rotating the logs every
   day, week, month or year. The 'log_rotate' allows you to store events in
   different files.
   
   Network settings
+  
   The masterserver uses UDP and TCP networking. The default port numbers are 
   27900 for server beacons (UDP) and 28900 for serverlists (TCP). Home-hosters
   have to open those firewall ports.
   Not all games request data in the same format. Until we established how the
-  request for a different datatype is made, we also provide the ability to
+  request for a different datatype are made, we also provide the ability to
   send data in the alternate (byte) form manually. More games can be added,
-  seperated by spaces.
+  separated by spaces.
   
   Supported Games & Secure/Validate
+  
   All GameSpy protocol games communicate according to a protocol that requires
   servers and clients to authenticate each other. As far as 333networks are 
   concerned, the authentication ciphers (keys) are confidential and intellectual
@@ -117,6 +124,7 @@ CONFIGURATION
   the "ignore_key" options.
   
   Timer & Enable settings
+  
   There are three methods to add server addresses to the list: by receiving a
   direct beacon, by validating a pending server and by synchronization. Some of
   these functions can be disabled from the configuration.
@@ -138,6 +146,7 @@ CONFIGURATION
   file are listed in [s]econds.
 
   Query UCC Applets
+  
   In addition, other UCC masterserver applets can be queried for more server
   addresses. This should not be done without permission of the UCC applet
   hosts, it's impolite to do so without asking. The new servers are added to
@@ -146,18 +155,22 @@ CONFIGURATION
   work properly. Change with "master_applet_enabled".
   
   Synchronization settings  
+  
   Synchronization between masterservers allows you to receive the list from 
   other masterservers, but in return, you allow other masterservers to query you 
   too, with the same request. If you do not wish this to happen, synchronization 
   can be disabled. Newly received servers are added to the "pending" list as 
-  described above. Change with "sync_enabled".
+  described above. Change with "sync_enabled". Please note that this will not 
+  prevent others from obtaining the server lists. Attempting to disable this is 
+  hypocrite and ambiguous, as "regular" clients do the same.
   
 RUNNING
+
   After all CPAN modules have been installed and all options have been reviewed
   in the configuration file, the masterserver can be started with the following 
   command:
    
-    screen -dmS "UTMSE" ./util/masterserver.pl
+    screen -dmS "masterserver" ./util/masterserver.pl
   
   Keep in mind that this configuration of database, masterserver and website
   is designed for 333networks. If you want to set up your own system for any

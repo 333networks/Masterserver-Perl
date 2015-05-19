@@ -11,20 +11,26 @@ our @EXPORT = qw | halt main |;
 
 ################################################################################
 ## Handle shutting down the program in case a fatal error occurs.
-## TODO: lockfile!
 ################################################################################
 sub halt {
   my $self = shift;
   
   # log shutdown
-  $self->log("stop", "Stopping the masterserver now.");
+  $self->log("stop", "Stopping the masterserver.");
   
   # clear all other timers, network servers, etc
   $self->{dbh}->disconnect() if (defined $self->{dbh});
+  $self->{dbh}   = undef;
   $self->{scope} = undef;
   
-  # and send signal to condition var
+  # and send signal to condition var to let the loops end
   $self->{must_halt}->send;
+  
+  # log halt  
+  $self->log("stop", "Shutting down NOW!");
+  
+  # time for a beer.  
+  exit;
 }
 
 ################################################################################
@@ -81,20 +87,21 @@ sub main {
   
   # start the beacon checker service (query entries from the pending list)
   $self->{scope}->{beacon_checker} = $self->beacon_checker() if ($self->{beacon_checker_enabled});
+
+  # provide server lists to clients with the browser host server
+  $self->{scope}->{browser_host} = $self->browser_host();
   
   # query other masterserver applets to get more server addresses
   $self->{scope}->{ucc_applet_query} = $self->ucc_applet_query_scheduler() if ($self->{master_applet_enabled});  
   
+  # synchronize with 333networks-based masterservers
+  $self->{scope}->{syncer_scheduler} = $self->syncer_scheduler() if ($self->{sync_enabled});
   
   # all modules loaded. Running...
   $self->log("info", "All modules loaded. Masterserver is now running.");
 
   # prevent main program from ending prematurely
   $self->{must_halt}->recv;
-  $self->log("stop", "Shutting down NOW!");
-
-  # time for a beer.  
-  exit;
 }
 
 1;

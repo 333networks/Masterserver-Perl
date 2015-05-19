@@ -15,7 +15,7 @@ sub database_login {
   my $self = shift;
 
   # create the dbi object
-  my $dbh = DBI->connect(@{$self->{dblogin}}, {PrintError => 0});
+  my $dbh = DBI->connect(@{$self->{dblogin}}, {PrintError => $self->{db_print}});
   
   # verify that the database connected
   if (defined $dbh) {
@@ -37,7 +37,7 @@ sub database_login {
     $self->halt();
   }
   
-  # return empty element
+  # unreachable
   return undef;
 }
 

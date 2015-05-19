@@ -38,7 +38,7 @@ sub beacon_catcher {
 }
 
 ################################################################################
-## Determine the concent of the received information and process it.
+## Determine the content of the received information and process it.
 ################################################################################
 sub on_beacon_receive {
   # $self, beacon address, handle, packed client address

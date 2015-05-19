@@ -26,7 +26,7 @@ CREATE TABLE pending(
 );
 
 CREATE TABLE server_info(
-  FOREIGN KEY(server_id) REFERENCES serverlist(id),
+  server_id           INTEGER,
   minnetver           INTEGER      NOT NULL DEFAULT 400,
   gamever             INTEGER      NOT NULL DEFAULT 400,
   location            INTEGER      NOT NULL DEFAULT 0,
@@ -52,7 +52,8 @@ CREATE TABLE server_info(
   timelimit           INTEGER      NOT NULL DEFAULT 0,
   goalteamscore       INTEGER      NOT NULL DEFAULT 0,
   fraglimit           INTEGER      NOT NULL DEFAULT 0,
-  mutators            TEXT         NOT NULL DEFAULT 'None'
+  mutators            TEXT         NOT NULL DEFAULT 'None',
+  FOREIGN KEY(server_id) REFERENCES serverlist(id)
 );
 
 CREATE TABLE player_info(

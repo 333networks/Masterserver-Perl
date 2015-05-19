@@ -10,7 +10,8 @@ use Exporter 'import';
 our @EXPORT = qw| ucc_applet_query_scheduler query_applet |;
 
 ################################################################################
-## Query other UCC applets periodically to get a list of online servers. 
+## Query Epic Games'-based UCC applets periodically to get an additional
+## list of online UT, Unreal (or other) game servers. 
 ################################################################################
 sub ucc_applet_query_scheduler {
   my $self = shift;
@@ -44,7 +45,7 @@ sub query_applet {
   my ($self, $ms) = @_;
   
   # be nice to notify
-  $self->log("applet","[TCP] > start querying $ms->{ip}:$ms->{port} for '$ms->{game}' games");
+  $self->log("query","start querying $ms->{ip}:$ms->{port} for '$ms->{game}' games");
 
   # list to store all IPs in.
   my $master_list = "";
@@ -68,7 +69,7 @@ sub query_applet {
           
       # part 1: receive \basic\\secure\$key
       if ($m =~ m/\\basic\\\\secure\\/) {
-        # skip to part 3: also request the list \list\gamename\ut
+        # skip to part 3: also request the list \list\gamename\ut -- skipped in UCC applets
         #$handle->push_write("\\list\\\\gamename\\$ms->{game}");
         $handle->push_write("\\list\\");
       }

@@ -19,7 +19,9 @@ require "$ROOT/data/masterserver-config.pl";
 $MasterServer::OBJ->{$_}   = $S{$_} for (keys %S);
 
 # load MasterServer core libs
-MasterServer::load_recursive('MasterServer::Core', 'MasterServer::UDP');
+MasterServer::load_recursive('MasterServer::Core', 
+                             'MasterServer::UDP',
+                             'MasterServer::TCP');
 
 # Run the MasterServer process
 MasterServer::run();

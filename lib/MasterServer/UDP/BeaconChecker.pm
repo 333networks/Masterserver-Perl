@@ -80,10 +80,9 @@ sub beacon_checker {
         
         # At this point, we are out of server entries. When new servers are 
         # added, they are immediately queried on the next round.
-        # From here on, just count down until the cycle is complete.
+        # From here on, just count down until the cycle is complete and handle
+        # new entries while they are added to the list.
 
-        # debug (spams badly)
-        $self->log("debug_spam", "Checker timer: t=".(time - $q{start_time}));
     }
   );
   
@@ -105,7 +104,7 @@ sub query_udp_server {
   my $buf = "";
   
   # debug spamming
-  $self->log("debug_spam", "Query server $ip:$port");
+  $self->log("udp", "Query server $ip:$port");
   
   # connect with UDP server
   my $udp_client; $udp_client = AnyEvent::Handle::UDP->new(

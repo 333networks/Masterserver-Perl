@@ -1,5 +1,5 @@
 
-package MasterServer::Database::Pg::dbServerlist;
+package MasterServer::Database::SQLite::dbServerlist;
 
 use strict;
 use warnings;
@@ -19,7 +19,7 @@ sub add_to_serverlist {
   
   # update or add server to serverlist
   my $u = $self->{dbh}->do("UPDATE serverlist 
-                            SET updated  = NOW()
+                            SET updated  = CURRENT_TIMESTAMP
                             WHERE ip = ? 
                             AND port = ?",
                             undef, $ip, $port);
@@ -57,7 +57,7 @@ sub update_serverlist {
   # update server info
   my $u = $self->{dbh}->do(
            'UPDATE serverlist 
-            SET updated  = NOW(),
+            SET updated  = CURRENT_TIMESTAMP,
               gamename = ?,
               gamever  = ?,
               hostname = ?,
@@ -142,8 +142,8 @@ sub get_next_server {
   
   return $self->{dbh}->selectall_arrayref(
      "SELECT id, ip, port FROM serverlist
-      WHERE added < (NOW() - INTERVAL '15 SECONDS')
-      AND updated > (NOW() - INTERVAL '3 HOUR')
+      WHERE added < datetime(CURRENT_TIMESTAMP, '-15 seconds')
+      AND updated > datetime(CURRENT_TIMESTAMP, '-10800 seconds')
       AND id > ?
       AND NOT blacklisted
       ORDER BY id ASC LIMIT 1", undef, $id)->[0];

@@ -208,7 +208,7 @@ sub process_ucc_applet_query {
         $c++;
         
         # print address
-        $self->log("debug_spam", "applet query added $ms->{game}\t$a\t$p");
+        $self->log("add", "applet query added $ms->{game}\t$a\t$p");
         
         # add server
         $self->add_pending($a, $p, $ms->{game}, $self->secure_string());

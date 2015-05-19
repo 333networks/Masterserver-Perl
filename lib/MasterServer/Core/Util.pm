@@ -7,15 +7,23 @@ use IP::Country::Fast;
 use POSIX qw/strftime/;
 use Exporter 'import';
 
-our @EXPORT = qw| valid_address ip2country |;
+our @EXPORT = qw| ip2country countryflag valid_address |;
 
 ################################################################################
-## return the abbreviated country based on IP
+## return the abbreviated country name based on IP
 ################################################################################
 sub ip2country {
-my ($self, $ip) = @_;
+  my ($self, $ip) = @_;
   my $reg = IP::Country::Fast->new();
   return $reg->inet_atocc($ip);
+}
+
+################################################################################
+## return the flag of a country
+################################################################################
+sub countryflag {
+  my ($self, $country) = @_;
+  # placeholder function to return the flag of a country
 }
 
 ################################################################################

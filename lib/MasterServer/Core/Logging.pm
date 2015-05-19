@@ -26,7 +26,7 @@ sub log {
   return if (defined $type && $self->{suppress} =~ m/$type/i);
   
   # determine filename
-  my $f = "MasterServer-333networks";
+  my $f = "MasterServer-Perl";
   
   # rotate log filename according to config
   $f .= $daily    if ($self->{log_rotate} =~ /^daily$/i   );

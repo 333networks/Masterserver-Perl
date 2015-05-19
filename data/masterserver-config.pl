@@ -16,26 +16,27 @@ our %S = (
   # example: 333networks -- http://master.333networks.com -- info@333networks.com
   contact_details => '333networks -- http://master.333networks.com -- info@333networks.com',
   
-  # host address (and tcp port)
-  masterserver_address => 'master.333networks.com:28900',
+  # host address
+  masterserver_address => 'master.333networks.com',
   
 ################################################################################
 # Database Login Configuration                                                 #
 #                                                                              #
 # Login credentials for the database that was created manually before.         #
+# Yes, that means that you need to create the database and tables on your own. #
 # Use only one option: Postgresql, SQLite (or future: MySQL)                   #
 #                                                                              #
 ################################################################################
 
   # Postgresql
-  dblogin => ['dbi:Pg:dbname=testdatabase', 'unrealmaster', 'unrealmasterpassword'],
+  dblogin => ['dbi:Pg:dbname=database_name', 'username', 'password'],
  
   # SQLite
   #dblogin => ["dbi:SQLite:dbname=$ROOT/data/database_name.db",'',''], 
 
   # MySQL
   #dblogin => ["dbi:mysql:database=database_name;host=localhost;port=3306",'user','password'],
-
+  
 ################################################################################
 # Logging configuration                                                        #
 #                                                                              #
@@ -44,30 +45,35 @@ our %S = (
 #                                                                              #
 ################################################################################
   
-  # log file location
+  # log file location (folder name!)
   log_dir   => "$ROOT/log/",
   
-  #rotate log? options: daily, weekly, monthly, yearly, none
+  #new log for every period of time? options: daily, weekly, monthly, yearly, none
   log_rotate => "weekly",
   
   # print to screen (1=yes, 0=no)
   printlog  => 1, 
   
   # which messages do you NOT want to see in the logs (and screen)?
-  suppress  => "debug_spam load hostname udp add update delete secure beacon",
-  #suppress  =>  "none",
+  suppress  =>  "none", # show all entries
+  
+  # suppress the most annoying messages
+  #suppress  => "add update delete read tcp udp query secure hostname",
+  
+  # print database errors
+  db_print => 0,
   
 ################################################################################
 # Network settings                                                             #
 #                                                                              #
-# Beacon UDP port and Browser TCP port                                         #
+# Beacon UDP port (beacons) and Browser TCP port  (serverlist)                 #
 # Settings for games that require different data formats                       #
 #                                                                              #
 ################################################################################
 
   # port settings
   listen_port   => 28900, # default 28900
-  beacon_port   => 28906, # default 27900    
+  beacon_port   => 27900, # default 27900    
 
   # these games require a special hex format instead of \ip\ip:port\
   hex_format => "bcommander",
@@ -79,7 +85,7 @@ our %S = (
 #                                                                              #
 ################################################################################
 
-  # Disable checks, all games pass as validated. (0=validate, 1=allow all)
+  # disable checks, all games pass as validated (0=validate only, 1=don't check)
   debug_validate => 0,
   
   # accept only servers that pass the secure/validate challenge, takes longer
@@ -97,28 +103,30 @@ our %S = (
 # Wait 60+ seconds before starting timers for incoming beacons                 #
 #                                                                              #
 ################################################################################
-
-  # Synchronization with other 333networks-based masterservers
-  sync_enabled  => 1,
-  sync_time     => [60, 1200],
   
   # Query UCC-based applets
   master_applet_enabled => 1,
-  master_applet_time    => [70, 600],
+  master_applet_time    => [90, 1200],
+
+  # Synchronization with other 333networks-based masterservers
+  sync_enabled  => 1, # 0 = disabled
+  sync_time     => [180, 1200],
 
   # Beacon Checker query all addresses in the database, requesting "basic" and 
   # "info". Execute at least twice per hour, to avoid time-outs in own data.
-  # disabling may break support for certain games.
+  # disabling breaks support for certain games [citation needed].
   beacon_checker_enabled  => 1,
-  beacon_checker_time     => [80, 0.5, 1800],
+  beacon_checker_time     => [60, 0.5, 1800],
 
   # Collect server information for the 333networks main site. Identical
-  # mechanism as the Beacon Checker. Disable when not interested in UT info.
+  # mechanism as the Beacon Checker. Disable when not interested in UT info
+  # for your website.
+  # NB: with some work it can be adapted to work with any other game. Own risk.
   utserver_query_enabled  => 1,
-  utserver_query_time     => [90, 0.15, 240],
+  utserver_query_time     => [75, 0.15, 240],
   
   # Maintenance duties like cleaning out old servers/players
-  maintenance_time => [3600, 60],
+  maintenance_time => [3600, 300],
 
 ################################################################################
 # Synchronization settings                                                     #
@@ -154,6 +162,7 @@ our %S = (
     {ip => "utmaster.epicgames.com",       port => 28900, game => "ut"},
     {ip => "master.hypercoop.tk",          port => 28900, game => "unreal"},
     {ip => "master.newbiesplayground.net", port => 28900, game => "unreal"},
+    {ip => "master.hlkclan.net",           port => 28900, game => "unreal"},
   ],
 
 ); #end %S
@@ -166,15 +175,7 @@ our %S = (
 # adding a game does not necessarily mean that suddenly the protocol will      #
 # be supported.                                                                #
 #                                                                              #
-# Import either the first or the second file; the first one is a sample file   #
-# that holds all the game names, but not their keys (public version). The      #
-# other file is not included in this git and contains both game names and      #
-# their confidential ciphers.                                                  #
-#                                                                              #
-# Importing both may give some unstable "invalid gamename" checks.             #
-#                                                                              #
 ################################################################################
-#require "$ROOT/data/supportedgames.pl";
-require "/server/Repositories/supportedgames.pl";
+require "$ROOT/data/supportedgames.pl";
 
 1;
