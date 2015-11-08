@@ -126,10 +126,10 @@ sub process_sync_list {
   # iterate through the gamenames and addresses
   while ( my ($gn,$addr) = each %r) {
   
-    # only process gamenames that are in our list for supported games (supportedgames.pl)
-    if (defined $gn && exists $self->{game}->{lc $gn}) {
+    # process all games wether we have a cipher for them.
+    if (defined $gn) {
       
-      # database types such as SQLite are slow, therefore use transactions.
+      # some database types, such as SQLite, are slow - therefore use transactions.
       $self->{dbh}->begin_work;
       
       # l(ocations, \label\ip:port\) split up in a(ddress) and p(ort)

@@ -93,7 +93,7 @@ sub compile_sync {
   for my $g (@games) {
     
     # $g is now a gamename -- check if it's supported. Else ignore.
-    if (exists $self->{game}->{$g}) {
+    if (length $self->get_cipher(lc $g) > 1) {
       
       # get list from database
       my $list = $self->get_game_list($g);

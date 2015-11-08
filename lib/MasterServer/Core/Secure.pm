@@ -6,7 +6,59 @@ use warnings;
 use POSIX qw/strftime/;
 use Exporter 'import';
 
-our @EXPORT = qw| secure_string validated_beacon validated_request validate_string charshift get_validate_string|;
+our @EXPORT = qw| load_ciphers 
+                  secure_string 
+                  validated_beacon 
+                  validated_request 
+                  validate_string 
+                  charshift 
+                  get_validate_string |;
+
+################################################################################
+## Supported Games list ciphers
+## Clear the Supported Games table and insert the list of supported games AND
+## their ciphers / default ports / descriptions included from the 
+## data/supportedgames.pl file.
+## 
+## Only config files after 5 October 2015 work with this script.
+## IMPORTANT! Afterwards, the $self->{game} hash will be cleared!
+################################################################################
+sub load_ciphers {
+  my $self = shift;
+  
+  # first delete the old cipher database
+  $self->clear_ciphers();
+  
+  # start inserting ciphers (lots of 'em)
+  $self->{dbh}->begin_work;
+  
+  # iterate through the game list
+  for (keys %{$self->{game}}) {
+    
+    # verify entries
+    my %opt = ();
+    $opt{gamename}      = lc $_;
+    $opt{cipher}        = $self->{game}->{$_}->{key};
+    $opt{description}   = $self->{game}->{$_}->{label} || 'Unknown Game';
+    $opt{default_qport} = $self->{game}->{$_}->{port} || 0;
+    
+    # insert the game/cipher in the db or halt on error
+    if ($self->insert_cipher(%opt) < 0) {
+      $self->{dbh}->rollback;
+      $self->halt();
+    }
+    
+  }
+  
+  # commit
+  $self->{dbh}->commit;
+  $self->log("info", "Cipher database successfully updated!");
+  
+  # unload the game variables from memory
+  $self->{game} = undef;
+  
+}
+
 
 ################################################################################
 # generate a random string of 6 characters long for the \secure\ challenge
@@ -75,7 +127,7 @@ sub validate_string {
   my ($self, $game, $sec, $enc)  = @_;
   
   # get cipher from gamename
-  my $cip = $self->{game}->{$game}->{key} || "000000";
+  my $cip = $self->get_cipher($game);
   
   # don't accept challenge longer than 16 characters (because vulnerable in UE)
   if (length $sec > 16) {
@@ -123,9 +175,26 @@ sub charshift {
 sub get_validate_string {
   my ($self, $cipher_string, $secure_string, $enctype) = @_;
   
-  # import pre-built rotations from config for enctype 
+  # use pre-built rotations for enctype 
   # -- see GSMSALG 0.3.3 reference for copyright and more information
-  my @enc_chars = $self->{enc_chars};
+  my @enc_chars = ( qw |
+    001 186 250 178 081 000 084 128 117 022 142 142 002 008 054 165 
+    045 005 013 022 082 007 180 034 140 233 009 214 185 038 000 004 
+    006 005 000 019 024 196 030 091 029 118 116 252 080 081 006 022 
+    000 081 040 000 004 010 041 120 081 000 001 017 082 022 006 074 
+    032 132 001 162 030 022 071 022 050 081 154 196 003 042 115 225 
+    045 079 024 075 147 076 015 057 010 000 004 192 018 012 154 094 
+    002 179 024 184 007 012 205 033 005 192 169 065 067 004 060 082 
+    117 236 152 128 029 008 002 029 088 132 001 078 059 106 083 122 
+    085 086 087 030 127 236 184 173 000 112 031 130 216 252 151 139 
+    240 131 254 014 118 003 190 057 041 119 048 224 043 255 183 158 
+    001 004 248 001 014 232 083 255 148 012 178 069 158 010 199 006 
+    024 001 100 176 003 152 001 235 002 176 001 180 018 073 007 031 
+    095 094 093 160 079 091 160 090 089 088 207 082 084 208 184 052 
+    002 252 014 066 041 184 218 000 186 177 240 018 253 035 174 182 
+    069 169 187 006 184 136 020 036 169 000 020 203 036 018 174 204 
+    087 086 238 253 008 048 217 253 139 062 010 132 070 250 119 184 
+  |),
 
   # convert to array of characters
   my @cip = split "", $cipher_string;

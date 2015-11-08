@@ -89,7 +89,7 @@ sub handle_validate {
   my $val = 0;
 
   # pass or fail the secure challenge
-  if (exists $r->{gamename} && exists $self->{game}->{$r->{gamename}}) {
+  if (exists $r->{gamename} && length $self->get_cipher(lc $r->{gamename}) > 1 ) {
     # game exists and we have the key to verify the response
     $val = $self->validated_request($r->{gamename}, $secure, $r->{enctype}, $r->{validate});
     

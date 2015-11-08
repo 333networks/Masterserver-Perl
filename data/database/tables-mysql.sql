@@ -26,3 +26,12 @@ CREATE TABLE pending(
   added           TIMESTAMP        NOT NULL DEFAULT NOW(),
   PRIMARY KEY (id)
 );
+
+CREATE TABLE games(
+  gamename        VARCHAR(50)        NOT NULL,
+  cipher          VARCHAR(10)        NOT NULL DEFAULT ' ',
+  description     VARCHAR(200)       NOT NULL DEFAULT ' ',
+  default_qport   INTEGER            NOT NULL DEFAULT 0,
+  num_uplink      INTEGER            NOT NULL DEFAULT 0,
+  num_total       INTEGER            NOT NULL DEFAULT 0
+);

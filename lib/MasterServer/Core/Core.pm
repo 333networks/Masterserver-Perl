@@ -82,6 +82,9 @@ sub main {
     }
   }
   
+  # (re)load the list with ciphers from the config file, into the database
+  $self->load_ciphers();
+  
   # start the listening service (listen for UDP beacons)
   $self->{scope}->{beacon_catcher} = $self->beacon_catcher();
   

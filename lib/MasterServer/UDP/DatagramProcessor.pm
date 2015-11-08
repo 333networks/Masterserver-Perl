@@ -25,20 +25,14 @@ sub process_udp_beacon {
   my %r;
   $buf = encode('UTF-8', $buf);
   $buf =~ s/\\([^\\]+)\\([^\\]+)/$r{$1}=$2/eg;
-  
-  # check whether the beacon has a gamename that is supported in our list
-  if (defined $r{gamename} && exists $self->{game}->{lc $r{gamename}}) {
+
+  # check whether the beacon has a gamename
+  if (defined $r{gamename}) {
     # log the beacon
     $self->log("beacon", "$peer_addr:$r{heartbeat} for $r{gamename}");
     
-    # some games (like bcommander) have a default port and don't send a
-    # heartbeat port.
-    if ($r{heartbeat} == 0) {
-      # assuming a default port exists
-      if (exists $self->{game}->{lc $r{gamename}}->{port}) {
-        $r{heartbeat} = $self->{game}->{lc $r{gamename}}->{port};
-      }
-    }
+    # some games (like bcommander) have a default port and don't send a heartbeat port.
+    $r{heartbeat} = $self->get_default_port($r{gamename}) if ($r{heartbeat} == 0);
     
     #
     # verify valid server address (ip+port)
@@ -103,8 +97,7 @@ sub process_udp_validate {
     my $enc = (defined $r{enctype}) ? $r{enctype} : 0;
     
     # database may not contain the correct gamename (ucc applet, incomplete beacon, change of gameserver)
-    $pending->[4] = (defined $r{gamename} && exists $self->{game}->{lc $r{gamename}}) 
-                  ? $r{gamename} : $pending->[4];
+    $pending->[4] = (defined $r{gamename}) ? $r{gamename} : $pending->[4];
 
     # verify    challenge          gamename       secure          enctype validate_response
     my $val = $self->validated_beacon($pending->[4], $pending->[5], $enc, $r{validate});
@@ -147,7 +140,7 @@ sub process_query_response {
   $buf =~ s/\\([^\\]+)\\([^\\]+)/$s{$1}=$2/eg;
   
   # check whether the gamename is supported in our db
-  if (defined $s{gamename} && exists $self->{game}->{lc $s{gamename}}) {
+  if (defined $s{gamename} && length $self->get_cipher(lc $s{gamename}) > 1) {
   
     # parse variables
     my %nfo = ();

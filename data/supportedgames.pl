@@ -1,14 +1,22 @@
-our %S = (%S, # do not overwrite the current config
+our %S = (
+%S, # include other config files too if applicable
 
-# Version: public-20150209
-
+#
+# last change 8 November 2015
+#
+# Changelog 8 Nov: migrated supportedgames.pl to database; after these are games
+#                  are loaded, the variables are cleared
+#
+# ChangeLog 5 Oct: moved "enc_chars" to Core::Secure.pm, in preparation to 
+#                  migrate supportedgames.pl to the database instead.
+#            
 # Supported Games & Secure/Validate
 # All GameSpy protocol games communicate according to a protocol that requires
 # servers and clients to authenticate each other. As far as 333networks are 
 # concerned, the authentication ciphers (keys) are confidential and intellectual
 # property. 
 #  
-# If you have a configuration file with keys, you can simply import that list
+# If you have a version of this file with keys, you can simply import that list
 # instead of this file. If you do not have the correct ciphers, you can choose 
 # to bypass the secure/validate challenge. This also allows hackers and 
 # opportunists to provide fake data or request the data without authorization. 
@@ -16,6 +24,9 @@ our %S = (%S, # do not overwrite the current config
 # 
 # For questions contact darkelarious@333networks.com or visit at irc.
 # irc.synirc.net #333networks
+#
+# NOTE: DUPLICATES MAY NOT EXIST. IN CASE OF DUPLICATES, ONE OF THE VALUES
+#       WILL BE PICKED AT RANDOM!
 #
 # Usage:
 #
@@ -3123,27 +3134,7 @@ our %S = (%S, # do not overwrite the current config
        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #    
        "333networks"        => {key => "", label => "333networks Synchronization Protocol"},
   },
-  
-  # rotations for encryption in the secure/validate challenge for challenges
-  # with enctype 1 or 2. See README for more information.
-  enc_chars => ( qw |
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-    000 000 000 000 000 000 000 000 000 000 000 000 000 000 000 000
-  |),
+
 );
 
 1;
