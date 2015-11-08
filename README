@@ -17,18 +17,22 @@ DESCRIPTION
   333networks can be found online at 
         http://wiki.333networks.com/index.php/MasterServer
 
+AUTHOR
+  Darkelarious
+  http://333networks.com
+  darkelarious@333networks.com
+
 REQUIREMENTS
-  - Postgresql or SQLite3
+  - Postgresql, MySQL or SQLite3
   - Perl 5.10 or above
   - The following CPAN modules:
-      FCGI
       DBI
-      DBD::Pg or DBD::SQLite
+      DBD::Pg / DBD::SQLite / DBD::mysql
       AnyEvent
       AnyEvent::Handle::UDP
-      IP::Country
+      IP::Country::Fast
   - screen (or another terminal multiplexer, optional)
-  
+
 INSTALL
 
   THE MASTER SERVER IS WRITTEN ON LINUX. IF YOU WANT TO RUN THE SOFTWARE IN 
@@ -41,9 +45,9 @@ INSTALL
   
   The masterserver stores server addresses in the database. This database must
   be created manually. SQLite3 users should not forget to chmod the database 
-  file with read/write access. The tables to be created can be found in the sql 
-  in the folder "data/database". Support for multiple database drivers is 
-  slowly being added. Use the database type of choice and created the tables.
+  file with read/write access. The tables to be created can be found in the 
+  "data/database" folder in the tables-Pg/SQLite/mysql.sql file. Choose your 
+  prefered database driver and created the tables as described below.
   
 CONFIGURATION
 
@@ -53,22 +57,37 @@ CONFIGURATION
   
   Masterserver HOST information
   
-  Fill in your contact details here if you want to be able to synchronize with
-  other masterservers. Though the synchronization process also works without
-  your contact details, it is preferred and appreciated if you allow other
+  Fill in your contact details here to be able to synchronize with other 
+  masterservers. Though the synchronization process also works without your 
+  contact details, it is preferred and appreciated if you allow other
   masterservers to synchronize with you too. In addition, third parties may
   want to retrieve the status of your masterserver. When remote servers query
   for your contact information, they can see who hosts this masterserver, which
-  build you are running and which games you currently support.
+  build you are running and which games you currently support. This is highly
+  recommended and much appreciated.
   
   Database login information
   
-  The masterserver slowly starts to support more and more different database 
-  types. In the module "lib/MasterServer/Databases" you can see which types are
-  currently working. Examples in use (only one option should be used):
+  The masterserver supports different database types. In the module 
+  "lib/MasterServer/Databases" you can see which types are currently supporting
+  out of the box. To choose a database type, specify the "dblogin" variable:
   
-    Postgresql: ['dbi:Pg:dbname=database_name', 'user', 'password']
-    SQLite:     ["dbi:SQLite:dbname=$ROOT/data/database_name.db",'','']
+  # Postgresql
+  dblogin => ['dbi:Pg:dbname=databasename', 'user', 'password'],
+ 
+  # SQLite
+  dblogin => ["dbi:SQLite:dbname=$ROOT/data/databasename.db",'',''], 
+
+  # MySQL
+  dblogin => ["dbi:mysql:database=databasename;host=localhost;port=3306",
+                                                            'user','password'],
+  
+  Keep in mind that the database needs to be created manually. That means that 
+  you first have to create your postgres/mysql user and grant permissions as
+  described in the proprietary manuals that come with your database 
+  installation. After that, you have to insert the tables manually, which are 
+  provided in the "data/database" folder. The masterserver script requires
+  read-and-write permissions on the SQLite database file.
   
   Logging
   
@@ -88,10 +107,10 @@ CONFIGURATION
     suppress => " load "
     suppress => " load beacon secure hostname "
   
-  More message types can be suppressed, where the types are separated by spaces.
-  If you want to log a lot of events, you could consider rotating the logs every
-  day, week, month or year. The 'log_rotate' allows you to store events in
-  different files.
+  More message types can be suppressed, where the types are separated by spaces 
+  as shown in the second example. If you want to log a lot of events, you could 
+  consider rotating the logs every day, week, month or year. The 'log_rotate' 
+  allows you to store events in different files with specified interval.
   
   Network settings
   
@@ -108,7 +127,7 @@ CONFIGURATION
   All GameSpy protocol games communicate according to a protocol that requires
   servers and clients to authenticate each other. As far as 333networks are 
   concerned, the authentication ciphers (keys) are confidential and intellectual
-  property. 
+  property of the individual game companies. 
   
   If you have a configuration file with keys, you can simply import this list
   at the bottom of the configuration file as shown there. If you do not have the
@@ -134,16 +153,9 @@ CONFIGURATION
   the masterserver can query the addresses individually, to determine whether
   they are valid game servers. Change with "beacon_checker_enabled".
   
-  For 333networks and the site, individual UT servers are queried for their 
-  server statistics information. This service is not really necessary for any 
-  other purpose than showing server information with a few minutes delay on your
-  site. It can be adapted on your own accord to do the same for other games.
-  You should keep "utserver_query_enabled" on 0 unless you have specific use
-  for the gathered data.
-  
-  The processes are all started with a one minute delay. This allows the master-
-  server to receive most beacons (every minute). All times in the configuration
-  file are listed in [s]econds.
+  The processes are all started with a delay. This allows the masterserver some 
+  grace time and to receive most beacons (every minute). All time variables in 
+  the configuration file are listed in [s]econds.
 
   Query UCC Applets
   
@@ -151,18 +163,20 @@ CONFIGURATION
   addresses. This should not be done without permission of the UCC applet
   hosts, it's impolite to do so without asking. The new servers are added to
   the "pending" list, where they wait to be queried individually as described
-  above. If "beacon_checker_enabled" is '0', this function will probably not
-  work properly. Change with "master_applet_enabled".
+  above. If "beacon_checker_enabled" is disabled, this function will NOT work 
+  properly. Enable/Disable with "master_applet_enabled".
   
   Synchronization settings  
   
   Synchronization between masterservers allows you to receive the list from 
   other masterservers, but in return, you allow other masterservers to query you 
   too, with the same request. If you do not wish this to happen, synchronization 
-  can be disabled. Newly received servers are added to the "pending" list as 
-  described above. Change with "sync_enabled". Please note that this will not 
-  prevent others from obtaining the server lists. Attempting to disable this is 
-  hypocrite and ambiguous, as "regular" clients do the same.
+  can be disabled. 
+  Newly received servers are added to the "pending" list as described above. 
+  Change with "sync_enabled". Please note that this will not prevent others 
+  from obtaining the server lists. Attempting to disable this is hypocrite and 
+  ambiguous [citation needed], as "regular" clients do the same to get the 
+  serverlist.
   
 RUNNING
 
@@ -179,6 +193,31 @@ RUNNING
   
   333networks is not responsible for your masterserver querying (or spamming)
   game servers and/or masterservers. Your configuration is YOUR responsibility!
+
+KNOWN ISSUES
+  There are a few known issues that will be resolved in future versions. The
+  following issues are listed and do not need to be reported.
+  
+  Slow database: currently, database requests are blocking. On slow hardware,
+  these requests may take enough time to miss/deny incoming beacons and list
+  requests. No solution available in this version. Proposed solution: AnyEvent's
+  asynchronous database driver(s).
+  
+  No servers after downtime: when the masterserver has been off or offline for
+  more than three hours, the server list does not update or only updates a 
+  limited amount of servers. This is caused by not removing and NOT re-querying
+  old servers after they appear unresponsive for more than three hours. Proposed
+  solution: after more than three hours downtime/off time, clear the server list
+  from the database workbench: ">DELETE FROM SERVERLIST;". Will be fixed in the
+  next update/release.
+
+  No servers found after syncing with 333networks or others: the syncing 
+  protocol also requires authentication. We do not want authorized people mass-
+  spamming our masterservers with sync request to determine whether the server
+  is online (yes, this actually happens -- use the \about\ query for that!) or
+  to keep the list unnecessary updated. Sync requests should not be executed 
+  more than 3-4 times per hour!
+  If you want to sync with us, please email 333networks
 
 COPYING
   Copyright (c) 2005-2015 Darkelarious & 333networks.com

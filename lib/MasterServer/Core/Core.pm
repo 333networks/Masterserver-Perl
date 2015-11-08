@@ -61,7 +61,7 @@ sub main {
     my @db_type = split(':', $self->{dblogin}->[0]);
 
     # format supported?
-    if ( "Pg SQLite" =~ m/$db_type[1]/i) {
+    if ( "Pg SQLite mysql" =~ m/$db_type[1]/i) {
       
       # inform us what DB we try to load
       $self->log("load","Loading $db_type[1] database module.");

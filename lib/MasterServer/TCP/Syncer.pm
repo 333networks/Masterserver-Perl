@@ -6,7 +6,6 @@ use warnings;
 use AnyEvent;
 use AnyEvent::Handle;
 use Exporter 'import';
-use Data::Dumper 'Dumper';
 
 our @EXPORT = qw| syncer_scheduler sync_with_master process_sync_list|;
 
@@ -85,7 +84,7 @@ sub sync_with_master {
         $handle->push_write("\\gamename\\333networks\\location\\0\\validate\\$validate\\final\\");
         
         # part 3: request the list \sync\gamenames consisting of space-seperated game names or "all"
-        my $request  = "\\sync\\".(($self->{sync_games}[0] == 0) ? "all" : $self->{sync_games}[1])."\\final\\";
+        my $request  = "\\sender\\$self->{masterserver_address}\\sync\\".(($self->{sync_games}[0] == 0) ? "all" : $self->{sync_games}[1])."\\final\\";
         
         # push the request to remote host
         $handle->push_write($request);
@@ -117,6 +116,12 @@ sub process_sync_list {
   
   # counter
   my $c = 0;
+  
+  if (exists $r{echo}) {
+    # remote address says...
+    $self->log("error", "$ms->{address} replied: $r{echo}");
+    
+  }
   
   # iterate through the gamenames and addresses
   while ( my ($gn,$addr) = each %r) {

@@ -33,7 +33,7 @@ sub read_tcp_handle {
 
   # allow multiple blocks to add to the response string
   my $response = "";
-      
+     
   # replace empty values for the string "undef" and replace line endings from netcatters 
   # parse the received data and extrapolate all the query commands found
   my %r = ();
@@ -243,9 +243,9 @@ sub handle_list {
 sub handle_sync {
   my ($self, $val, $r, $c, $a, $p) = @_;
   
-  # alternate part 3: wait for the requested action: \sync\(all|list of games)
+  # alternate part 3: wait for the requested action: \sync\(all|list of games)\sender\domainname
   $self->log("tcp","Sync request from $a:$p found");
-      
+
   if ($val && exists $r->{sync}) {
 
     # compile list of addresses
@@ -256,7 +256,8 @@ sub handle_sync {
     $c->push_write($data);
     
     # log successful (debug)
-    $self->log("sync","$a:$p successfully synced.");
+    if (exists $r->{sender}) {$self->log("sync","$r->{sender} successfully synced.");}
+                        else {$self->log("sync","$a:$p successfully synced.");}
     
     # clean and close the connection
     $self->clean_tcp_handle($c);

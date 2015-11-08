@@ -23,18 +23,17 @@ sub version {
   # these fields does not count as a significant alteration.
   #
   # -- addition to the LICENCE, you are only allowed to modify these lines
-  # if you send Darkelarious a postcard or email with your compliments or,
-  # in case of a company editing, a letter of (re)commendation.
+  # if you send Darkelarious a postcard or email with your compliments.
   #
 
   # master type
-  $self->{build_type}     = "333networks Masterserver-Perl (Pg-SQLite) 20150519208";
+  $self->{build_type}     = "333networks Masterserver-Perl (Pg-SQLite-MySQL) 20151108209";
   
   # version
-  $self->{build_version}  = "2.0.8";
+  $self->{build_version}  = "2.0.9";
   
   # date yyyy-mm-dd
-  $self->{build_date}     = "2015-05-19";
+  $self->{build_date}     = "2015-11-08";
   
   #author, email
   $self->{build_author}   = "Darkelarious, darkelarious\@333networks.com";
