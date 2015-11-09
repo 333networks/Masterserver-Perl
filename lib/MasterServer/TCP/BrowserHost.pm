@@ -36,7 +36,7 @@ sub browser_host {
     my $h; $h = AnyEvent::Handle->new(
       fh        => $fh,
       poll      => 'r',
-      timeout   => 1,
+      timeout   => 5,
       on_eof    => sub {$self->clean_tcp_handle(@_)},
       on_error  => sub {$self->clean_tcp_handle(@_)},
       on_read   => sub {$self->read_tcp_handle($h, $a, $p, $secure, @_)},
