@@ -7,39 +7,9 @@ use AnyEvent;
 use AnyEvent::Handle;
 use Exporter 'import';
 
-our @EXPORT = qw| syncer_scheduler sync_with_master process_sync_list|;
-
-################################################################################
-## Syncer Scheduler
-## Request the masterlist for selected or all games from other 
-## 333networks-based masterservers.
-################################################################################
-sub syncer_scheduler {
-  my $self = shift;
-  
-  # log active
-  $self->log("load", "Synchronisation module active.");
-  
-  # go through the list of provided addresses
-  my $i = 0;
-  return AnyEvent->timer (
-    after     => $self->{sync_time}[0],
-    interval  => $self->{sync_time}[1],
-    cb        => sub {
-      # check if there's a master server entry to be synced. If not, return
-      # to zero and go all over again.
-      $i = 0 unless $self->{sync_masters}[$i];
-      return if (!defined $self->{sync_masters}[$i]);
-      
-      # synchronze with master $i
-      $self->log("tcp", "Attempting to synchronize with $self->{sync_masters}[$i]->{address}");
-      $self->sync_with_master($self->{sync_masters}[$i]);
-
-      #increment counter
-      $i++;
-    }
-  );
-}
+our @EXPORT = qw| sync_with_master 
+                  process_sync_list 
+                  masterserver_list |;
 
 ################################################################################
 ## Sends synchronization request to another 333networks based master server and
@@ -47,6 +17,9 @@ sub syncer_scheduler {
 ################################################################################
 sub sync_with_master {
   my ($self, $ms) = @_;
+  
+  # announce
+  $self->log("tcp", "Attempting to synchronize with $ms->{ip}");
 
   # list to store all IPs in.
   my $sync_list = "";
@@ -54,11 +27,11 @@ sub sync_with_master {
   # connection handle
   my $handle; 
   $handle = new AnyEvent::Handle(
-    connect  => [$ms->{address} => $ms->{port}],
-    timeout  => 3,
+    connect  => [$ms->{ip} => $ms->{tcp}],
+    timeout  => 4,
     poll     => 'r',
-    on_error => sub {$self->log("error","$! on $ms->{address} $ms->{port}"); $handle->destroy;},
-    on_eof   => sub {$self->process_sync_list($sync_list, $ms);              $handle->destroy;},
+    on_error => sub {$self->log("error","$! on $ms->{ip} $ms->{tcp}"); $handle->destroy;},
+    on_eof   => sub {$self->process_sync_list($sync_list, $ms);        $handle->destroy;},
     on_read  => sub {
       # receive and clear buffer
       my $m = $_[0]->rbuf;
@@ -78,13 +51,20 @@ sub sync_with_master {
         $m =~ s/\\([^\\]+)\\([^\\]+)/$r{$1}=$2/eg;
         
         # respond to the validate challenge
-        my $validate = $self->validate_string("333networks", $r{secure}, $r{enctype});
+        my $validate = $self->validate_string(
+                        gamename => "333networks",
+                        secure   => $r{secure},
+                        enctype  => $r{enctype}
+                    );
 
         # part 2: send \gamename\ut\location\0\validate\$validate\final\
         $handle->push_write("\\gamename\\333networks\\location\\0\\validate\\$validate\\final\\");
         
         # part 3: request the list \sync\gamenames consisting of space-seperated game names or "all"
-        my $request  = "\\sender\\$self->{masterserver_address}\\sync\\".(($self->{sync_games}[0] == 0) ? "all" : $self->{sync_games}[1])."\\final\\";
+        #         compatibility note: old queries use "new", instead treat them as "all".
+        my $request  = "\\sync\\"
+                     . (($self->{sync_games}[0] == 0) ? ("all" or "new") : $self->{sync_games}[1])
+                     . "\\final\\";
         
         # push the request to remote host
         $handle->push_write($request);
@@ -119,7 +99,7 @@ sub process_sync_list {
   
   if (exists $r{echo}) {
     # remote address says...
-    $self->log("error", "$ms->{address} replied: $r{echo}");
+    $self->log("error", "$ms->{ip} replied: $r{echo}");
     
   }
   
@@ -152,7 +132,7 @@ sub process_sync_list {
           }
           else {
             # invalid address, log
-            $self->log("error", "invalid address found while syncing at $ms->{address}: $l!");
+            $self->log("error", "invalid address found while syncing at $ms->{ip}: $l!");
           }
        
         } # endif ($l =~ /:/)
@@ -165,7 +145,41 @@ sub process_sync_list {
   } # end while
   
   # end message
-  $self->log("sync", "received $c addresses after syncing from $ms->{address}");
+  $self->log("sync-rx", "received $c addresses after syncing from $ms->{ip}:$ms->{tcp}");
 }
-    
+
+################################################################################
+## Determine a list of all unique 333networks-compatible masterservers
+## and return this list. Join the brotherhood!
+################################################################################
+sub masterserver_list {
+  my $self = shift;
+  my %brotherhood;
+  
+  # start with the masterservers defined in our configuration file
+  for my $ms (@{$self->{sync_masters}}) {
+    my $ip = $self->host2ip($ms->{address});
+    $brotherhood{"$ip:$ms->{port}"} = {ip => $ip, tcp => $ms->{port}, udp => $ms->{beacon}} if $ip;
+  }
+  
+  # get the list of uplinking masterservers
+  my $serverlist = $self->get_server(
+        updated   => 3600,
+        gamename  => "333networks",
+        limit     => 50, # more would be ridiculous.. right?..
+      );
+  
+  # overwrite existing entries, add new
+  for my $ms (@{$serverlist}) {
+    $brotherhood{"$ms->{ip}:$ms->{hostport}"} = {ip => $ms->{ip}, tcp => $ms->{hostport}, udp => $ms->{port}};
+  }
+  
+  # masterservers that sync with us can not be derived directly, but by reading
+  # the server log we can add them manually. Lot of work, little gain, as those
+  # syncing masterservers will most likely be uplinking as well between now and 
+  # a few weeks/months.
+  
+  return \%brotherhood;
+}
+
 1;

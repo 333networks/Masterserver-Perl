@@ -15,6 +15,9 @@ our @EXPORT = qw| log |;
 sub log {
   my ($self, $type, $msg) = @_;
   
+  # flush
+  $| = 1;
+  
   # parse time of log entry and prep for rotating log
   my $time    = strftime('%Y-%m-%d %H:%M:%S',localtime);
   my $yearly  = strftime('-%Y',localtime);
@@ -26,7 +29,7 @@ sub log {
   return if (defined $type && $self->{suppress} =~ m/$type/i);
   
   # determine filename
-  my $f = "MasterServer-Perl";
+  my $f = "MasterServer";
   
   # rotate log filename according to config
   $f .= $daily    if ($self->{log_rotate} =~ /^daily$/i   );

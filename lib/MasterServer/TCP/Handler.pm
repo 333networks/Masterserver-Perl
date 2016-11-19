@@ -33,47 +33,53 @@ sub read_tcp_handle {
 
   # allow multiple blocks to add to the response string
   my $response = "";
+  
+  # print debug values
+  $self->log("debug","$a:$p sent $rxbuf");
      
   # replace empty values for the string "undef" and replace line endings from netcatters 
   # parse the received data and extrapolate all the query commands found
   my %r = ();
   $m =~ s/\\\\/\\undef\\/;
-  $m =~ s/\n//;
+  $m =~ s/\\$/\\undef\\/;
   $m =~ s/\\([^\\]+)\\([^\\]+)/$r{$1}=$2/eg;
   
   # secure/validate challenge
   # part 2: receive \gamename\ut\location\0\validate\$validate\final\
   $val = $self->handle_validate(\%r, $h, $secure, $a, $p) 
     if (exists $r{validate} && !$val);
-  
+
   # about query
   $response .= $self->handle_about($r{about}, $a, $p) if (exists $r{about});
   
   # return address list
-  # part 3: wait for the requested action: \list\gamename\ut\
+  # part 3: wait for the requested action: \list\\gamename\ut\
   $self->handle_list($val, \%r, $c, $a, $p) if (exists $r{list} && exists $r{gamename});
   
   # Sync request from another 333networks-based masterserver. Respond with list
   # of requested games (or all games).
   $self->handle_sync($val, \%r, $c, $a, $p) if (exists $r{sync});
   
+  #
+  # Support echo: doesn't do anything but print to log if not suppressed.
+  $self->log("echo","($a:$p): $r{echo}") if $r{echo};
+  
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
   # improper syntax/protocol -- no valid commands found
   # respond with an error.
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-  if ($m =~ m/!(about|sync|validate|list)/) {
+  if ("about sync validate list" =~ m/\Q$response\E/i) {
     
     # error message to client
     $c->push_write("\\echo\\333networks did not understand your request. ".
                    "Contact us via 333networks.com\\final\\");
 
     # and log it
-    $self->log("error","invalid request from Browser $a:$p with unknown message \"$rxbuf\"", $self->{log_settings}->{handler_error});
+    $self->log("error","invalid request from Browser $a:$p with unknown message \"$rxbuf\".");
   } # end if weird query
   else {
     $c->push_write($response . "\\final\\") if ($response ne "");
   }
-
 }
 
 
@@ -87,22 +93,28 @@ sub handle_validate {
   
   # auth var init
   my $val = 0;
-
+  
   # pass or fail the secure challenge
-  if (exists $r->{gamename} && length $self->get_cipher(lc $r->{gamename}) > 1 ) {
+  if (exists $r->{gamename} && length $self->get_game_props(lc $r->{gamename})->{cipher} > 1 ) {
     # game exists and we have the key to verify the response
-    $val = $self->validated_request($r->{gamename}, $secure, $r->{enctype}, $r->{validate});
-    
+    $val = $self->compare_challenge(
+                gamename => $r->{gamename},
+                secure   => $secure,
+                enctype  => $r->{enctype},
+                validate => $r->{validate},
+                ignore   => $self->{ignore_browser_key},
+              );    
+
     # update for future queries
     $self->{browser_clients}->{$h}[1] = $val;
   }
   elsif (exists $r->{gamename}) {
     # log
-    $self->log("support", "received unknown gamename request \"$r->{gamename}\" from $a:$p");
+    $self->log("support", "received unknown gamename request \"$r->{gamename}\" from $a:$p.");
   }
 
-  # log
-  $self->log("secure","$a:$p validated with $val for $r->{gamename}, $secure, $r->{validate}");
+  # log (the spam!)
+  #$self->log("secure","$a:$p validated with $val for $r->{gamename}, $secure, $r->{validate}");
   
   # return auth status
   return $val;
@@ -124,47 +136,30 @@ sub handle_validate {
 sub handle_about {
   my ($self, $about, $a, $p) = @_;
   my $response = "";
-    
-  #
+
   # contact info
-  #
   if ($about =~ /^contact$/i or $about =~ /^undef$/i) {
-    $response .= "\\about\\$self->{contact_details}";
-    
-    # log/print
+    $response .= "\\about\\$self->{masterserver_hostname}, contact: $self->{masterserver_contact}";
     $self->log("about","communicating to $a:$p my contact information.");
   }
     
-  #
-  # build info
-  #
-  if ($about =~ /^build$/i or $about =~ /^undef$/i) {
-    
+  # build/version info
+  if ($about =~ /^build$/i or $about =~ /^version$/i or $about =~ /^undef$/i) {
     $response .= "\\build\\$self->{build_type} $self->{build_version} written "
               .  "by $self->{build_author}, released $self->{build_date}";
-
-    # log/print
     $self->log("about","telling $a:$p my build info.");
   }
   
-  #
   # address info
-  #
   if ($about =~ /^address$/i or $about =~ /^undef$/i) {
-    
     $response .= "\\address\\$self->{masterserver_address}"
               .  "\\listen_port\\$self->{listen_port}"
               .  "\\beacon_port\\$self->{beacon_port}";
-
-    # log/print
     $self->log("about","telling $a:$p my address/config info.");
   }
     
-  #
   # support info
-  #
   if ($about =~ /^support$/i or $about =~ /^undef$/i) {
-    
     # string games in database
     my $sg = $self->get_gamenames();
     my $sgs = "";
@@ -172,12 +167,14 @@ sub handle_about {
       $sgs .= " " if (length $sgs > 0);
       $sgs .= $_->[0];
     }
-    
-    # print response
     $response .= "\\support\\$sgs";
-    
-    #log/print
     $self->log("about","telling $a:$p which games are supported.");
+  }
+
+  # unsupported query
+    if ("contact build address support version undef" !~ m/$about/i) {
+    $response .= "\\echo\\incorrect query usage, supported queries are: contact build version address support.";
+    $self->log("about","incorrect query \"$about\", telling $a:$p the supported \"about\" queries.");
   }
   
   # return response string
@@ -200,7 +197,7 @@ sub handle_list {
     my $data = "";
     
     # determine the return format
-    if ($self->{hex_format} =~ m/$r->{gamename}/i or $r->{gamename} =~ /^cmp$/i) {
+    if ($self->{hex_format} =~ m/$r->{gamename}/i or $r->{list} =~ /^cmp$/i) {
       # return addresses as byte format (ip=ABCD port=EF)
       $data .= $self->compile_list_cmp($r->{gamename});
     }
@@ -215,7 +212,7 @@ sub handle_list {
     # immediately send to client
     $c->push_write($data);
       
-    # log successful (debug)
+    # log successful
     $self->log("list","$a:$p successfully retrieved the list for $r->{gamename}.");
     
     # clean and close the connection
@@ -244,7 +241,7 @@ sub handle_sync {
   my ($self, $val, $r, $c, $a, $p) = @_;
   
   # alternate part 3: wait for the requested action: \sync\(all|list of games)\sender\domainname
-  $self->log("tcp","Sync request from $a:$p found");
+  $self->log("tcp","Sync request from $a:$p found.");
 
   if ($val && exists $r->{sync}) {
 
@@ -256,8 +253,7 @@ sub handle_sync {
     $c->push_write($data);
     
     # log successful (debug)
-    if (exists $r->{sender}) {$self->log("sync","$r->{sender} successfully synced.");}
-                        else {$self->log("sync","$a:$p successfully synced.");}
+    $self->log("sync-tx","$a:$p successfully synced.");
     
     # clean and close the connection
     $self->clean_tcp_handle($c);

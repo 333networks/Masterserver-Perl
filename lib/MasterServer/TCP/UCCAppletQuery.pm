@@ -1,5 +1,5 @@
 
-package MasterServer::UDP::UCCAppletQuery;
+package MasterServer::TCP::UCCAppletQuery;
 
 use strict;
 use warnings;
@@ -7,34 +7,7 @@ use AnyEvent;
 use AnyEvent::Handle;
 use Exporter 'import';
 
-our @EXPORT = qw| ucc_applet_query_scheduler query_applet |;
-
-################################################################################
-## Query Epic Games'-based UCC applets periodically to get an additional
-## list of online UT, Unreal (or other) game servers. 
-################################################################################
-sub ucc_applet_query_scheduler {
-  my $self = shift;
-  $self->log("load", "UCC Applet Query Scheduler is loaded.");
-  
-  my $i = 0;
-  return AnyEvent->timer (
-    after     => $self->{master_applet_time}[0],
-    interval  => $self->{master_applet_time}[1],
-    cb        => sub {
-      # check if there's a master server entry to be queried. If not, return
-      # to zero and go all over again.
-      $i = 0 unless $self->{master_applet}[$i];
-      return if (!defined $self->{master_applet}[$i]);
-      
-      # perform the query
-      $self->query_applet($self->{master_applet}[$i]);
-
-      #increment counter
-      $i++;
-    }
-  );
-}
+our @EXPORT = qw| query_applet |;
 
 ################################################################################
 ## The UCC Applet (Epic Megagames, Inc.) functions as a master server for one 
@@ -45,7 +18,7 @@ sub query_applet {
   my ($self, $ms) = @_;
   
   # be nice to notify
-  $self->log("query","start querying $ms->{ip}:$ms->{port} for '$ms->{game}' games");
+  $self->log("tcp","start querying $ms->{ip}:$ms->{port} for '$ms->{game}' games");
 
   # list to store all IPs in.
   my $master_list = "";
@@ -69,9 +42,22 @@ sub query_applet {
           
       # part 1: receive \basic\\secure\$key
       if ($m =~ m/\\basic\\\\secure\\/) {
-        # skip to part 3: also request the list \list\gamename\ut -- skipped in UCC applets
-        #$handle->push_write("\\list\\\\gamename\\$ms->{game}");
-        $handle->push_write("\\list\\");
+
+        # received data
+        my %r;
+        $m =~ s/\\([^\\]+)\\([^\\]+)/$r{$1}=$2/eg;
+
+        # respond to challenge
+        my $validate = $self->validate_string(gamename => $ms->{game},
+                                              enctype  => $r{enctype}||0,
+                                              secure   => $r{secure});
+
+        # send response
+        $handle->push_write("\\gamename\\$ms->{game}\\location\\0\\validate\\$validate\\final\\");
+        
+        # part 3: also request the list \list\gamename\ut -- skipped in UCC applets
+        $handle->push_write("\\list\\\\gamename\\$ms->{game}\\final\\");
+        
       }
       
       # part 3b: receive the entire list in multiple steps.

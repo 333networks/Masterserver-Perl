@@ -4,10 +4,11 @@ package MasterServer::Core::Util;
 use strict;
 use warnings;
 use IP::Country::Fast;
+use Socket;
 use POSIX qw/strftime/;
 use Exporter 'import';
 
-our @EXPORT = qw| ip2country countryflag valid_address |;
+our @EXPORT = qw| ip2country host2ip valid_address db_all sqlprint |;
 
 ################################################################################
 ## return the abbreviated country name based on IP
@@ -19,29 +20,99 @@ sub ip2country {
 }
 
 ################################################################################
-## return the flag of a country
+## return IP of a hostname
 ################################################################################
-sub countryflag {
-  my ($self, $country) = @_;
-  # placeholder function to return the flag of a country
+sub host2ip {
+  my ($self, $name) = @_;
+  return inet_ntoa(inet_aton($name)) if $name;
 }
+
 
 ################################################################################
 ## Verify whether a given domain name or IP address and port are valid.
-## returns 1/0 if valid/invalid ip + port
+## returns 1/0 if valid/invalid ip + port. IPv4 ONLY!
 ################################################################################
 sub valid_address {
   my ($self, $a, $p) = @_;
-  
+
   # check if ip and port are in valid range
-  my $val_addr = ($a =~ '\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b');
-  my $val_port = (0 < $p && $p <= 65535);
+  my $val_addr = ($a =~ '\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b') if $a;
+  my $val_port = (0 < $p && $p <= 65535) if $p;
   
   # exclude addresses where we don't want people sniffing
   for (qw|192.168.(.\d*).(.\d*) 127.0.(.\d*).(.\d*) 10.0.(.\d*).(.\d*)|){$val_addr = 0 if ($a =~ m/$_/)}
   
   # only return true if both are valid  
   return ($val_addr && $val_port);
+}
+
+################################################################################
+# Adaptation of TUWF's dbAll sql function
+################################################################################
+sub db_all {
+  my $self = shift;
+  my $sqlq = shift;
+  my $s = $self->{dbh};
+
+  $sqlq =~ s/\r?\n/ /g;
+  $sqlq =~ s/  +/ /g;
+  my(@q) = @_ ? sqlprint($sqlq, @_) : ($sqlq);
+
+  my($q, $r);
+  my $ret = eval {
+    $q = $s->prepare($q[0]);
+    $q->execute($#q ? @q[1..$#q] : ());
+    $r = $q->fetchall_arrayref({});
+    $q->finish();
+    1;
+  };
+
+  $r = [] if (!$r || ref($r) ne 'ARRAY');
+  return $r;
+}  
+
+################################################################################
+# sqlprint (TUWF):
+#   ?    normal placeholder
+#   !l   list of placeholders, expects arrayref
+#   !H   list of SET-items, expects hashref or arrayref: format => (bind_value || \@bind_values)
+#   !W   same as !H, but for WHERE clauses (AND'ed together)
+#   !s   the classic sprintf %s, use with care
+# This isn't sprintf, so all other things won't work,
+# Only the ? placeholder is supported, so no dollar sign numbers or named placeholders
+################################################################################
+sub sqlprint { # query, bind values. Returns new query + bind values
+
+  my @a;
+  my $q='';
+  for my $p (split /(\?|![lHWs])/, shift) {
+    next if !defined $p;
+    if($p eq '?') {
+      push @a, shift;
+      $q .= $p;
+    } elsif($p eq '!s') {
+      $q .= shift;
+    } elsif($p eq '!l') {
+      my $l = shift;
+      $q .= join ', ', map '?', 0..$#$l;
+      push @a, @$l;
+    } elsif($p eq '!H' || $p eq '!W') {
+      my $h=shift;
+      my @h=ref $h eq 'HASH' ? %$h : @$h;
+      my @r;
+      while(my($k,$v) = (shift(@h), shift(@h))) {
+        last if !defined $k;
+        my($n,@l) = sqlprint($k, ref $v eq 'ARRAY' ? @$v : $v);
+        push @r, $n;
+        push @a, @l;
+      }
+      $q .= ($p eq '!W' ? 'WHERE ' : 'SET ').join $p eq '!W' ? ' AND ' : ', ', @r
+        if @r;
+    } else {
+      $q .= $p;
+    }
+  }
+  return($q, @a);
 }
 
 1;

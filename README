@@ -2,19 +2,18 @@
 
 DESCRIPTION
   This repository contains the source code which was written by Darkelarious to
-  limit the effects of GameSpy (GameSpy Industries, Inc.) shutting down their 
+  soften the effects of GameSpy (GameSpy Industries, Inc.) shutting down their 
   services. Among this service was a so-called "masterserver".
   
-  Simply said, a masterserver is a program that maintains a list of online game 
-  servers and presents this list to clients (gamers, players) who request the 
-  list of game addresses.
-  
-  The 333networks Masterserver is a software framework that allows 
-  gamers/players to browse for online games  in the same manner as GameSpy 
+  A masterserver is a program that maintains a list of online game servers and 
+  presents this list to clients (gamers, players) who request the list of game 
+  addresses. The 333networks Masterserver is a software framework that allows 
+  gamers/players to browse for online games in the same manner as GameSpy 
   provided this service.
   
   More information about the masterserver and variations on the protocol by
   333networks can be found online at 
+        http://333networks.com/masterserver
         http://wiki.333networks.com/index.php/MasterServer
 
 AUTHOR
@@ -142,7 +141,7 @@ CONFIGURATION
   instead of the correct response. Both situations can be in- or excluded in
   the "ignore_key" options.
   
-  Timer & Enable settings
+  Enable settings
   
   There are three methods to add server addresses to the list: by receiving a
   direct beacon, by validating a pending server and by synchronization. Some of
@@ -153,10 +152,6 @@ CONFIGURATION
   the masterserver can query the addresses individually, to determine whether
   they are valid game servers. Change with "beacon_checker_enabled".
   
-  The processes are all started with a delay. This allows the masterserver some 
-  grace time and to receive most beacons (every minute). All time variables in 
-  the configuration file are listed in [s]econds.
-
   Query UCC Applets
   
   In addition, other UCC masterserver applets can be queried for more server
@@ -169,58 +164,77 @@ CONFIGURATION
   Synchronization settings  
   
   Synchronization between masterservers allows you to receive the list from 
-  other masterservers, but in return, you allow other masterservers to query you 
-  too, with the same request. If you do not wish this to happen, synchronization 
-  can be disabled. 
+  other masterservers. In return and to make this communication two-way, the
+  masterserver sends uplinks to all other masterservers that are specified in
+  your list. Your masterserver is then queried in the same way as if it were an
+  ordinary game server. This also shares the information that you provided
+  earlier in the HOST information section. If you do not wish this to happen, 
+  you should disable synchronization entirely. 
   Newly received servers are added to the "pending" list as described above. 
   Change with "sync_enabled". Please note that this will not prevent others 
   from obtaining the server lists. Attempting to disable this is hypocrite and 
-  ambiguous [citation needed], as "regular" clients do the same to get the 
-  serverlist.
+  ambiguous, as "regular" clients do the same to get the serverlist.
   
 RUNNING
 
   After all CPAN modules have been installed and all options have been reviewed
   in the configuration file, the masterserver can be started with the following 
-  command:
+  command from within the root directory of this folder:
    
     screen -dmS "masterserver" ./util/masterserver.pl
   
-  Keep in mind that this configuration of database, masterserver and website
-  is designed for 333networks. If you want to set up your own system for any
+  You can also choose to run the masterserver with ./util/masterserver without
+  the use of a terminal multiplexer, for example for debugging purposes or a
+  dry-run to test if your settings are properly configured.
+  
+  The masterserver works great in combination with one of the MasterServer 
+  Interface websites. This allows you to keep an eye on your masterserver and
+  allows others to view directly which games you support, how many servers are
+  available and more.
+  
+  The provided configuration is optimized for generic use. Keep in mind that the
+  masterserver in this form was originally designed for use with other 
+  333networks functions. If you want to set up your own system for any
   game other than Unreal Tournament, you may want to look at other repositories
   on 333networks HOW this is achieved. See also http://git.333networks.com
   
   333networks is not responsible for your masterserver querying (or spamming)
   game servers and/or masterservers. Your configuration is YOUR responsibility!
 
+TOOLS
+
+  In the "util/tools" folder, a few handy tools are included. In general, it is
+  not necessary to use these tools. While debugging and writing new features for
+  the masterserver, these scripts have been very handy. Therefore, they are
+  included in the repository. Poor documentation is included in the scripts and
+  required files themselves.
+
 KNOWN ISSUES
   There are a few known issues that will be resolved in future versions. The
   following issues are listed and do not need to be reported.
   
+  Only Postgresql works. When any other database type is selected, the script
+  either crashes, generates a lot of errors or does not process any game
+  servers. This is the result of attempting to unify the database type functions
+  that failed. Sadly, many of the reference functions and time functions are not 
+  compatible with each other. An update where this is fixed will follow.
+  
   Slow database: currently, database requests are blocking. On slow hardware,
   these requests may take enough time to miss/deny incoming beacons and list
   requests. No solution available in this version. Proposed solution: AnyEvent's
-  asynchronous database driver(s).
-  
-  No servers after downtime: when the masterserver has been off or offline for
-  more than three hours, the server list does not update or only updates a 
-  limited amount of servers. This is caused by not removing and NOT re-querying
-  old servers after they appear unresponsive for more than three hours. Proposed
-  solution: after more than three hours downtime/off time, clear the server list
-  from the database workbench: ">DELETE FROM SERVERLIST;". Will be fixed in the
-  next update/release.
+  asynchronous database driver(s). The current configuration for 333networks and
+  affiliated servers do not suffer from this problem.
 
   No servers found after syncing with 333networks or others: the syncing 
   protocol also requires authentication. We do not want authorized people mass-
   spamming our masterservers with sync request to determine whether the server
   is online (yes, this actually happens -- use the \about\ query for that!) or
   to keep the list unnecessary updated. Sync requests should not be executed 
-  more than 3-4 times per hour!
+  more than 1-2 times per hour!
   If you want to sync with us, please email 333networks on info@333networks.com
 
 COPYING
-  Copyright (c) 2005-2015 Darkelarious & 333networks.com
+  Copyright (c) 2005-2016 Darkelarious & 333networks.com
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the

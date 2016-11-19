@@ -3,6 +3,7 @@ package MasterServer::TCP::ListCompiler;
 
 use strict;
 use warnings;
+
 use Exporter 'import';
 
 our @EXPORT = qw| compile_list compile_list_cmp compile_sync |;
@@ -15,7 +16,10 @@ sub compile_list {
   my ($self, $gamename) = @_;
   
   # get the list from database
-  my $serverlist = $self->get_game_list($gamename);
+  my $serverlist = $self->get_server(
+        updated => 3600,
+        gamename => $gamename,
+      );
   
   # prepare empty return string
   my $response_string = "";
@@ -24,9 +28,9 @@ sub compile_list {
   for (@{$serverlist}){
 
     # append \ip\ip:port to string
-    $response_string .= "\\ip\\$_->[0]:$_->[1]";
+    $response_string .= "\\ip\\$_->{ip}:$_->{port}";
    }
-   
+  
   # return the string with data
   return $response_string;
 }
@@ -39,7 +43,10 @@ sub compile_list_cmp {
   my ($self, $gamename) = @_;
   
   # get the list from database
-  my $serverlist = $self->get_game_list($gamename);
+  my $serverlist = $self->get_server(
+        updated => 3600,
+        gamename => $gamename,
+      );
   
   # prepare empty return string
   my $response_string = "";
@@ -48,8 +55,8 @@ sub compile_list_cmp {
   for (@{$serverlist}){
     
     # convert ip address to ABCDEF mode
-    my ($A, $B, $C, $D) = ($_->[0] =~ /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/);
-    my ($E, $F) = ($_->[1] >> 8, $_->[1] & 0xFF);
+    my ($A, $B, $C, $D) = ($_->{ip} =~ /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/);
+    my ($E, $F) = ($_->{port} >> 8, $_->{port} & 0xFF);
     
     # print as chr string of 6 bytes long      
     my $bin = ""; $bin .= (chr $A) . (chr $B) . (chr $C) . (chr $D) . (chr $E) . (chr $F);
@@ -87,20 +94,23 @@ sub compile_sync {
   }
   
   # only get unique values from array
-  @games = map { $_ => 1 } @games;
+  my %games = map { $_ => 1 } @games;
 
   # get the list for every requested gamename
-  for my $g (@games) {
-    
+  for my $g (keys %games) {
+
     # $g is now a gamename -- check if it's supported. Else ignore.
-    if (length $self->get_cipher(lc $g) > 1) {
+    if ($self->get_game_props($g)) {
       
       # get list from database
-      my $list = $self->get_game_list($g);
+      my $list = $self->get_server(
+        updated => 7200,
+        gamename => $g,
+      );
       
       # add all games to string separated by spaces
       my $gamestring = "";
-      foreach $_ (@{$list}) {$gamestring .= "$_->[0]:$_->[1] ";}
+      foreach $_ (@{$list}) {$gamestring .= "$_->{ip}:$_->{port} ";}
 
       # if it contains at least one entry, add the list to the response list
       $response_string .= "\\$g\\$gamestring" if (length $gamestring >= 7);

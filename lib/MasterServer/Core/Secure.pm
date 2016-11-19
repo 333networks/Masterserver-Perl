@@ -8,11 +8,8 @@ use Exporter 'import';
 
 our @EXPORT = qw| load_ciphers 
                   secure_string 
-                  validated_beacon 
-                  validated_request 
-                  validate_string 
-                  charshift 
-                  get_validate_string |;
+                  validate_string
+                  compare_challenge |;
 
 ################################################################################
 ## Supported Games list ciphers
@@ -21,7 +18,6 @@ our @EXPORT = qw| load_ciphers
 ## data/supportedgames.pl file.
 ## 
 ## Only config files after 5 October 2015 work with this script.
-## IMPORTANT! Afterwards, the $self->{game} hash will be cleared!
 ################################################################################
 sub load_ciphers {
   my $self = shift;
@@ -47,14 +43,13 @@ sub load_ciphers {
       $self->{dbh}->rollback;
       $self->halt();
     }
-    
   }
   
   # commit
   $self->{dbh}->commit;
   $self->log("info", "Cipher database successfully updated!");
   
-  # unload the game variables from memory
+  # unload the game variables from masterserver memory
   $self->{game} = undef;
   
 }
@@ -78,82 +73,54 @@ sub secure_string {
 # authenticate the \validate\ response for the \secure\ challenge. 
 # returns 1 on valid response, 0 on invalid
 ################################################################################
-sub validated_beacon {
-  my ($self, $gamename, $secure, $enctype, $validate) = @_;
+sub compare_challenge {
+  my ($self, %o) = @_; 
   
   # debugging enabled? Then don't care about validation
   return 1 if ($self->{debug_validate});
   
-  # enctype given? 
-  $enctype = 0 unless $enctype;
+  # secure string too long? (because vulnerable in UE)
+  return 0 if (length $o{secure} > 16);
   
-  if ($self->{ignore_beacon_key} =~ m/$gamename/i){
-    $self->log("secure", "ignored beacon validation for $gamename");
+  # additional conditions to skip checking provided?
+  $o{ignore} = "" unless $o{ignore};
+  
+  # ignore this game if asked to do so
+  if ($o{ignore} =~ m/$o{gamename}/i){
+    $self->log("secure", "ignored beacon validation for $o{gamename}");
     return 1;
-  }
+  } 
+
+  # enctype given?
+  $o{enctype} = 0 unless $o{enctype};  
   
-  # compare received response with expected response
-  return ($self->validate_string($gamename, $secure, $enctype) eq $validate) || 0;
+  # get cipher corresponding with the gamename
+  my $cip = $self->get_game_props($o{gamename})->{cipher};  
+  
+  # calculate validate string
+  my $val = get_validate_string($cip, $o{secure}, $o{enctype});
+
+  # return whether or not they match
+  return ($val eq $o{validate});
 }
 
 ################################################################################
-# authenticate the \validate\ response for the \secure\ challenge. 
-# returns 1 on valid response, 0 on invalid
-################################################################################
-sub validated_request {
-  my ($self, $gamename, $secure, $enctype, $validate) = @_;
-  
-  # debugging enabled? Then don't care about validation
-  return 1 if ($self->{debug_validate});
-  
-  # enctype given? 
-  $enctype = 0 unless $enctype;
-  
-  # ignore games and beacons that are listed
-  if ($self->{ignore_browser_key} =~ m/$gamename/i){
-    $self->log("secure", "ignored browser validation for $gamename");
-    return 1;
-  }
-  
-  # compare received response with expected response
-  return ($self->validate_string($gamename, $secure, $enctype) eq $validate) || 0;
-}
-
-################################################################################
-# process the validate string as a response to the secure challenge
-# returns: validate string (usually 8 characters long)
+# obtain the secure/validate challenge string
 ################################################################################
 sub validate_string {
-  my ($self, $game, $sec, $enc)  = @_;
+  my ($self, %o) = @_;
+  
+  # secure string too long? (because vulnerable in UE)
+  return 0 if (length $o{secure} > 16);
   
   # get cipher from gamename
-  my $cip = $self->get_cipher($game);
+  my $cip = $self->get_game_props(lc $o{gamename})->{cipher};
   
-  # don't accept challenge longer than 16 characters (because vulnerable in UE)
-  if (length $sec > 16) {
-    return "invalid!"}
-  
-  # check for valid encryption choices
-  my $enc_val = (defined $enc && 0 <= $enc && $enc <= 2) ? $enc : 0;
+  # enctype given?
+  $o{enctype} = 0 unless $o{enctype};  
   
   # calculate and return validate string
-  return $self->get_validate_string($cip, $sec, $enc_val);
-}
-
-################################################################################
-# rotate characters as part of the secure/validate algorithm.
-# arg and return: int (representing a character)
-################################################################################
-sub charshift {
-  my ($self, $reg) = @_;
-    return($reg + 65) if ($reg <  26);
-    return($reg + 71) if ($reg <  52);
-    return($reg - 4)  if ($reg <  62);
-    return(43)        if ($reg == 62);
-    return(47)        if ($reg == 63);
-    
-    # if all else fails
-    return(0);
+  return get_validate_string($cip, $o{secure}, $o{enctype});
 }
 
 ################################################################################
@@ -166,14 +133,15 @@ sub charshift {
 # was released under the GNU General Public License, for more information, see
 # the original software at http://aluigi.altervista.org/papers.htm#gsmsalg
 #
-# conversion and modification of the algorithm by Darkelarious, June 2014.
+# conversion and modification of the algorithm by Darkelarious, June 2014 with
+# explicit, written permission of Luigi Auriemma.
 #
 # args: game cipher, 6-char challenge string, encryption type
 # returns: validate string (usually 8 characters long)
 # !! requires cipher hash to be configured in config! (imported or otherwise)
 ################################################################################
 sub get_validate_string {
-  my ($self, $cipher_string, $secure_string, $enctype) = @_;
+  my ($cipher_string, $secure_string, $enctype) = @_;
   
   # use pre-built rotations for enctype 
   # -- see GSMSALG 0.3.3 reference for copyright and more information
@@ -245,7 +213,7 @@ sub get_validate_string {
       $tmp[$i] = $sec[$i] ^ $enc[($l + $m) & 0xff];
   }
   
-# part of the enctype 1-2 process
+  # part of the enctype 1-2 process
   for($sec_len = $i; $sec_len % 3; $sec_len++) {
       $tmp[$sec_len] = 0;
   }
@@ -270,10 +238,10 @@ sub get_validate_string {
       $m = $m % 256;
       $n = $tmp[$i + 2];
       $n = $n % 256;
-      $val[$p++] = $self->charshift($l >> 2);
-      $val[$p++] = $self->charshift((($l & 3 ) << 4) | ($m >> 4));
-      $val[$p++] = $self->charshift((($m & 15) << 2) | ($n >> 6));
-      $val[$p++] = $self->charshift($n & 63);
+      $val[$p++] = charshift($l >> 2);
+      $val[$p++] = charshift((($l & 3 ) << 4) | ($m >> 4));
+      $val[$p++] = charshift((($m & 15) << 2) | ($n >> 6));
+      $val[$p++] = charshift($n & 63);
   }
   
   # return to ascii characters
@@ -281,6 +249,22 @@ sub get_validate_string {
   for (@val) { $str .= chr $_}
   
   return $str;
+}
+
+################################################################################
+# rotate characters as part of the secure/validate algorithm.
+# arg and return: int (representing a character)
+################################################################################
+sub charshift {
+  my $reg = shift;
+    return($reg + 65) if ($reg <  26);
+    return($reg + 71) if ($reg <  52);
+    return($reg - 4)  if ($reg <  62);
+    return(43)        if ($reg == 62);
+    return(47)        if ($reg == 63);
+    
+    # if all else fails
+    return(0);
 }
 
 1;

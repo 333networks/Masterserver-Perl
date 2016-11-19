@@ -16,9 +16,6 @@ our @EXPORT = qw| browser_host clean_tcp_handle|;
 ################################################################################
 sub browser_host {
   my $self = shift;
-  
-  # log: TCP host is active
-  $self->log("load","Loading TCP Browser Host.");
 
   my $browser = tcp_server undef, $self->{listen_port}, sub {
     my ($fh, $a, $p) = @_;
@@ -51,7 +48,7 @@ sub browser_host {
   };
   
   # startup of TCP server complete 
-  $self->log("load", "Listening for TCP connections on port $self->{listen_port}.");
+  $self->log("info", "Listening for TCP connections on port $self->{listen_port}.");
   return $browser;
 }
 

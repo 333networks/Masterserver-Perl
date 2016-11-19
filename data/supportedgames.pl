@@ -1,14 +1,20 @@
 our %S = (
-%S, # include other config files too if applicable
+%S, # do not overwrite other parts of the %S config hash
 
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 #
-# last change 8 November 2015
+# last change 24 Oktober 2016
 #
-# Changelog 8 Nov: migrated supportedgames.pl to database; after these are games
-#                  are loaded, the variables are cleared
+# Changelog 24 Okt 2016: Added/updated description for the 333networks synchronization
+#                        protocol and uplink setup. Works with MS-Perl 2.1.8 and above.
+# 
 #
-# ChangeLog 5 Oct: moved "enc_chars" to Core::Secure.pm, in preparation to 
-#                  migrate supportedgames.pl to the database instead.
+# Changelog  8 Nov 2015: migrated supportedgames.pl to database; after these are games
+#                        are loaded, the variables are cleared
+#
+# ChangeLog  5 Oct 2015: moved "enc_chars" to Core::Secure.pm, in preparation to 
+#                        migrate supportedgames.pl to the database instead.
 #            
 # Supported Games & Secure/Validate
 # All GameSpy protocol games communicate according to a protocol that requires
@@ -28,10 +34,12 @@ our %S = (
 # NOTE: DUPLICATES MAY NOT EXIST. IN CASE OF DUPLICATES, ONE OF THE VALUES
 #       WILL BE PICKED AT RANDOM!
 #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
 # Usage:
-#
 # game code => {key => "game key", label => "game name label", port => "default port number"}
-  game => {
+game => {
+      "333networks"        => {key => "", label => "333networks MasterServer (Synchronization Protocol)"},
       "12ironds"           => {key => "", label => "12Iron (DS)"},
       "12irondsam"         => {key => "", label => "12Iron  Automatch (DS)"},
       "2kboxingds"         => {key => "", label => "2K Boxing (DS)"},
@@ -3124,15 +3132,6 @@ our %S = (
       "zeroGds"            => {key => "", label => "ZeroG (DS)"},
       "zsteel"             => {key => "", label => "Z: Steel Soldiers"},
       "ZumaDeluxe"         => {key => "", label => "Zuma Deluxe"},
-
-       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-       #
-       # 333networks supports syncing between other 333networks masters. The 
-       # details are furthermore explained in the config file. The secure 
-       # challenge still applies, but with the gamename "333networks"
-       #
-       # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #    
-       "333networks"        => {key => "", label => "333networks Synchronization Protocol"},
   },
 
 );

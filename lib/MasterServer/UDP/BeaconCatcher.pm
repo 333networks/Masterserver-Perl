@@ -16,8 +16,8 @@ our @EXPORT = qw| beacon_catcher on_beacon_receive|;
 sub beacon_catcher {
   my $self = shift;
   
-  # module startup log
-  $self->log("load","Loading UDP Beacon Catcher.");
+  # display that the server is up and listening for beacons
+  $self->log("info", "Listening for UDP beacons on port $self->{beacon_port}.");
   
   # UDP server
   my $udp_server; 
@@ -29,9 +29,6 @@ sub beacon_catcher {
     # when datagrams are received
     on_recv => sub {$self->on_beacon_receive(@_)},
   );
-  
-  # display that the server is up and listening for beacons
-  $self->log("info", "Listening for UT Beacons on port $self->{beacon_port}.");
   
   # allow object to exist beyond this scope. Objects have ambitions too.
   return $udp_server;
@@ -57,14 +54,18 @@ sub on_beacon_receive {
     # truncate and try to continue
     $b = substr $b, 0, 64;
   }
-  
+
   # if a heartbeat format was detected...
   $self->process_udp_beacon($udp, $pa, $b, $peer_addr, $port) 
     if ($b =~ m/\\heartbeat\\/ && $b =~ m/\\gamename\\/);
-  
+
   # or if this is a secure response, verify the response
   $self->process_udp_validate($b, $peer_addr, $port, undef) 
     if ($b =~ m/\\validate\\/);
+  
+  # or if other masterservers check if we're still alive
+  $self->process_udp_basic($udp, $pa, $b, $peer_addr) 
+    if ($b =~ m/\\basic\\/ || $b =~ m/\\status\\/ || $b =~ m/\\info\\/);
 }
 
 1;
