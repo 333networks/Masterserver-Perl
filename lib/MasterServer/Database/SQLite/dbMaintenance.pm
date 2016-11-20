@@ -1,4 +1,4 @@
-package MasterServer::Database::dbMaintenance;
+package MasterServer::Database::SQLite::dbMaintenance;
 
 use strict;
 use warnings;
@@ -17,7 +17,7 @@ sub delete_old_pending {
   # remove servers
   my $u = $self->{dbh}->do(
      "DELETE FROM pending 
-      WHERE added < to_timestamp(?)", undef, time-3600);
+      WHERE added < datetime(?, 'unixepoch')", undef, time-3600);
   
   # notify 
   $self->log("delete", "Removed $u entries from pending.") if ($u > 0);

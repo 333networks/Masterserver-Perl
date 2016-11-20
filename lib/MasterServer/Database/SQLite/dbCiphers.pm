@@ -1,5 +1,5 @@
 
-package MasterServer::Database::dbCiphers;
+package MasterServer::Database::SQLite::dbCiphers;
 
 use strict;
 use warnings;

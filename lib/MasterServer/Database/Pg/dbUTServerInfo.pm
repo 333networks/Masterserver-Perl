@@ -1,5 +1,5 @@
 
-package MasterServer::Database::dbUTServerInfo;
+package MasterServer::Database::Pg::dbUTServerInfo;
 
 use strict;
 use warnings;

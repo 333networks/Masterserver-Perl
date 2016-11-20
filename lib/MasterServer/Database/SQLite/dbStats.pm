@@ -1,4 +1,4 @@
-package MasterServer::Database::dbStats;
+package MasterServer::Database::SQLite::dbStats;
 
 use strict;
 use warnings;
@@ -17,8 +17,8 @@ sub get_gamelist_stats {
 
   return $self->{dbh}->selectall_arrayref(
      "SELECT DISTINCT gamename AS gamename, 
-            COUNT(NULLIF(b333ms AND updated > to_timestamp(?), FALSE)) AS numdirect,
-            COUNT(NULLIF(updated > to_timestamp(?), FALSE)) AS numtotal
+            COUNT(NULLIF(b333ms AND updated > datetime(?, 'unixepoch'), 0)) AS numdirect,
+            COUNT(NULLIF(updated > datetime(?, 'unixepoch'), 0)) AS numtotal
      FROM serverlist 
      GROUP BY gamename", undef, time-7200, time-7200);
 }
@@ -32,8 +32,8 @@ sub write_direct_beacons {
   my $self = shift;
   my $u = $self->{dbh}->do(
     "UPDATE serverlist 
-     SET b333ms = CAST(0 AS BOOLEAN)
-     WHERE beacon < to_timestamp(?) AND b333ms", 
+     SET b333ms = 0
+     WHERE beacon < datetime(?, 'unixepoch') AND b333ms", 
      undef, time-3600);
      
   # notify

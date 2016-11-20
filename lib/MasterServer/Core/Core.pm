@@ -35,15 +35,34 @@ sub halt {
 
 ################################################################################
 ## Set up the database connection
+## determine the type of database and load the appropriate module
 ################################################################################
 sub select_database_type {
   my $self = shift;
+ 
+  # read from login
+  my @db_type = split(':', $self->{dblogin}->[0]);
 
-  # Connect to database
-  $self->{dbh} = $self->database_login();
+  # format supported?
+  if ( "Pg SQLite mysql" =~ m/$db_type[1]/i) {
     
-  # and test whether we succeeded.
-  $self->halt() unless (defined $self->{dbh});
+    # inform us what DB we try to load
+    $self->log("load","Loading $db_type[1] database module.");
+  
+    # load dbd and tables/queries for this db type
+    MasterServer::load_recursive("MasterServer::Database::$db_type[1]");
+    
+    # Connect to database
+    $self->{dbh} = $self->database_login();
+    
+    # and test whether we succeeded.
+    $self->halt() unless (defined $self->{dbh});
+  }
+  else {
+    # raise error and halt
+    $self->log("fatal", "The masterserver could not determine the chosen database type.");
+    $self->halt();
+  }
 }
 
 ################################################################################

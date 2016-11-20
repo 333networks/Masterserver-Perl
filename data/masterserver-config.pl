@@ -1,7 +1,7 @@
 package MasterServer;
 
 #
-# Last update: Sat 19 Oct 2016 20:23 GMT+1
+# Last update: Sun 20 Nov 2016 19:14 GMT+1
 #
 
 our (%S, $ROOT);
@@ -21,7 +21,7 @@ our %S = (
 ################################################################################
 
   # our public display name (shows in "online masterservers" on 333networks.com)
-  masterserver_hostname => "master.333networks.com (333networks MasterServer)",
+  masterserver_hostname => "master.333networks.com (333networks MasterServer Template)",
   
   # contact details (shows in TCP requests directly from master to master)
   masterserver_contact  => 'Darkelarious -- info@333networks.com',
@@ -69,9 +69,6 @@ our %S = (
   # disable most messages, except for important events
   suppress => "udp add update tcp udp delete uplink stat beacon secure utserver hostname kfstat debug",
   
-  # print database errors
-  db_print => 0,
-  
 ################################################################################
 # Network settings                                                             #
 #                                                                              #
@@ -81,8 +78,8 @@ our %S = (
 ################################################################################
 
   # port settings
-  listen_port   => 28900, #28905, # default 28900
-  beacon_port   => 27900, #28906, # default 27900    
+  listen_port   => 28900, # default 28900
+  beacon_port   => 27900, # default 27900    
 
   # these games require a special hex format instead of \ip\ip:port\
   # if the current protocol is correct, you don't need to touch this ever.

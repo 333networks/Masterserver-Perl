@@ -1,4 +1,4 @@
-package MasterServer::Database::dbGetServers;
+package MasterServer::Database::SQLite::dbGetServers;
 
 use strict;
 use warnings;
@@ -31,10 +31,10 @@ sub get_server {
     $o{country}     ? (    'country = ?' => $o{country})      : (),
     $o{b333ms}      ? (     'b333ms = ?' => $o{b333ms})       : (),
     $o{blacklisted} ? ('blacklisted = ?' => $o{blacklisted})  : (),
-    $o{added}       ? (  'added < to_timestamp(?)' => (time-$o{added}))   : (),
-    $o{beacon}      ? ( 'beacon > to_timestamp(?)' => (time-$o{beacon}))  : (),
-    $o{updated}     ? ('updated > to_timestamp(?)' => (time-$o{updated})) : (),
-    $o{before}      ? ('updated < to_timestamp(?)' => (time-$o{before}))  : (),
+    $o{added}       ? (  'added < datetime(?, \'unixepoch\')' => (time-$o{added}))   : (),
+    $o{beacon}      ? ( 'beacon > datetime(?, \'unixepoch\')' => (time-$o{beacon}))  : (),
+    $o{updated}     ? ('updated > datetime(?, \'unixepoch\')' => (time-$o{updated})) : (),
+    $o{before}      ? ('updated < datetime(?, \'unixepoch\')' => (time-$o{before}))  : (),
   );
   
   my @select = ( qw|
@@ -98,8 +98,8 @@ sub get_pending {
     $o{gamename}    ? (  'gamename = ?' => lc $o{gamename}) : (),
     $o{secure}      ? (    'secure = ?' => $o{secure})      : (),
     $o{enctype}     ? (   'enctype = ?' => $o{enctype})     : (),
-    $o{added} ? ('added < to_timestamp(?)' => (time-$o{added})) : (),
-    $o{after} ? ('added > to_timestamp(?)' => (time-$o{after})) : (),
+    $o{added} ? ('added < datetime(?, \'unixepoch\')' => (time-$o{added})) : (),
+    $o{after} ? ('added > datetime(?, \'unixepoch\')' => (time-$o{after})) : (),
   );
   
   my @select = ( qw| id ip beaconport heartbeat gamename secure enctype added |,);

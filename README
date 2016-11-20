@@ -213,11 +213,9 @@ KNOWN ISSUES
   There are a few known issues that will be resolved in future versions. The
   following issues are listed and do not need to be reported.
   
-  Only Postgresql works. When any other database type is selected, the script
-  either crashes, generates a lot of errors or does not process any game
-  servers. This is the result of attempting to unify the database type functions
-  that failed. Sadly, many of the reference functions and time functions are not 
-  compatible with each other. An update where this is fixed will follow.
+  MySQL does not work with this masterserver version. When any database type 
+  other than Postgresql or SQLite3 is selected, the script either crashes. An 
+  update where this is fixed will follow late 2016 or early 2017.
   
   Slow database: currently, database requests are blocking. On slow hardware,
   these requests may take enough time to miss/deny incoming beacons and list

@@ -1,5 +1,5 @@
 
-package MasterServer::Database::dbAddServers;
+package MasterServer::Database::Pg::dbAddServers;
 
 use strict;
 use warnings;
