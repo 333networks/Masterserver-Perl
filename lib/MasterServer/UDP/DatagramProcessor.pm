@@ -33,54 +33,67 @@ sub process_udp_beacon {
     # log the beacon
     $self->log("beacon", "$peer_addr:$r{heartbeat} for $r{gamename}");
     
-    # some games (like bcommander) have a default port and don't send a heartbeat port.
-    $r{heartbeat} = $self->get_game_props($r{gamename})->{heartbeat} if ($r{heartbeat} == 0);
+    # check if game is actually supported in our db
+    my $game_props = $self->get_game_props($r{gamename});
     
-    #
-    # verify valid server address (ip+port)
-    if ($self->valid_address($peer_addr,$r{heartbeat})) {
+    # if no entry exists, report error.
+    if (defined $game_props) {
     
-      # check if the entry already was not added within the last 5 seconds, throttle otherwise
-      my $throttle = $self->get_pending(
-        ip        => $peer_addr, 
-        heartbeat => $r{heartbeat}, 
-        gamename  => $r{gamename},
-        after     => 5,
-        sort      => "added",
-        limit     => 1
-      )->[0];
-      return if (defined $throttle);
+      # some games (like bcommander) have a default port and don't send a heartbeat port.
+      $r{heartbeat} = $game_props->{heartbeat} if ($r{heartbeat} == 0);
       
-      # generate a new secure string
-      my $secure = $self->secure_string();
+      #
+      # verify valid server address (ip+port)
+      if ($self->valid_address($peer_addr,$r{heartbeat})) {
       
-      # update beacon in serverlist if it already exists, otherwise update
-      # or add to pending with new secure string.
-      my $auth = $self->add_server_new(ip         => $peer_addr, 
-                                       beaconport => $port, 
-                                       heartbeat  => $r{heartbeat}, 
-                                       gamename   => $r{gamename}, 
-                                       secure     => $secure,
-                                       direct     => 1,
-                                       updated    => time,
-                                       beacon     => time);
-
-      # send secure string back
-      if ($auth > 0) {
+        # check if the entry already was not added within the last 5 seconds, throttle otherwise
+        my $throttle = $self->get_pending(
+          ip        => $peer_addr, 
+          heartbeat => $r{heartbeat}, 
+          gamename  => $r{gamename},
+          after     => 5,
+          sort      => "added",
+          limit     => 1
+        )->[0];
+        return if (defined $throttle);
         
-        # verify that this is a legitimate client by sending the "secure" query
-        $udp->push_send("\\secure\\$secure\\final\\", $pa);
+        # generate a new secure string
+        my $secure = $self->secure_string();
+        
+        # update beacon in serverlist if it already exists, otherwise update
+        # or add to pending with new secure string.
+        my $auth = $self->add_server_new(ip         => $peer_addr, 
+                                         beaconport => $port, 
+                                         heartbeat  => $r{heartbeat}, 
+                                         gamename   => $r{gamename}, 
+                                         secure     => $secure,
+                                         direct     => 1,
+                                         updated    => time,
+                                         beacon     => time);
+
+        # send secure string back
+        if ($auth > 0) {
           
-          # log this as a new beacon
-          $self->log("secure", "challenged new beacon $peer_addr:$port with $secure.");
-        }
+          # verify that this is a legitimate client by sending the "secure" query
+          $udp->push_send("\\secure\\$secure\\final\\", $pa);
+            
+            # log this as a new beacon
+            $self->log("secure", "challenged new beacon $peer_addr:$port with $secure.");
+          }
+      }
+      
+      # invalid ip+port combination, like \heartbeat\0\ or local IP
+      else {
+        # Log that beacon had incorrect information, such as port 0 or so. Spams log!
+        $self->log("invalid","$peer_addr had bad information --> $raw");
+      }
+    
+    }
+    # unknown game
+    else {
+      $self->log("invalid","$peer_addr tries to identify as unknown game \"$r{gamename}\".");
     }
     
-    # invalid ip+port combination, like \heartbeat\0\ or local IP
-    else {
-      # Log that beacon had incorrect information, such as port 0 or so. Spams log!
-      $self->log("invalid","$peer_addr had bad information --> $raw");
-    }
   }
   
   # gamename not valid or recognized, display raw buffer in case data could not 
