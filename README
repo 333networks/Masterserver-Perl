@@ -30,6 +30,7 @@ REQUIREMENTS
       AnyEvent
       AnyEvent::Handle::UDP
       IP::Country::Fast
+      Switch
   - screen (or another terminal multiplexer, optional)
 
 INSTALL

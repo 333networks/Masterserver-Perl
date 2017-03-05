@@ -30,7 +30,7 @@ sub sync_with_master {
     connect  => [$ms->{ip} => $ms->{tcp}],
     timeout  => 4,
     poll     => 'r',
-    on_error => sub {$self->log("error","$! on $ms->{ip} $ms->{tcp}"); $handle->destroy;},
+    on_error => sub {$self->error($!, "$ms->{ip}:$ms->{port}"); $handle->destroy;},
     on_eof   => sub {$self->process_sync_list($sync_list, $ms);        $handle->destroy;},
     on_read  => sub {
       # receive and clear buffer

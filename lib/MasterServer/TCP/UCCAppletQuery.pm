@@ -29,7 +29,7 @@ sub query_applet {
     connect  => [$ms->{ip} => $ms->{port}],
     timeout  => 5,
     poll     => 'r',
-    on_error => sub {$self->log("error", "$! on $ms->{ip}:$ms->{port}."); $handle->destroy;},
+    on_error => sub {$self->error($!, "$ms->{ip}:$ms->{port}"); $handle->destroy;},
     on_eof   => sub {$self->process_ucc_applet_query($master_list, $ms);  $handle->destroy;},
     on_read  => sub {
     
