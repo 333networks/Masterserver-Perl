@@ -1,15 +1,15 @@
 =========
 
 DESCRIPTION
-  This repository contains the source code which was written by Darkelarious to
-  soften the effects of GameSpy (GameSpy Industries, Inc.) shutting down their 
-  services. Among this service was a so-called "masterserver".
-  
+
   A masterserver is a program that maintains a list of online game servers and 
   presents this list to clients (gamers, players) who request the list of game 
   addresses. The 333networks Masterserver is a software framework that allows 
-  gamers/players to browse for online games in the same manner as GameSpy 
-  provided this service.
+  gamers/players to browse online games.
+
+  This repository contains the source code which was written by Darkelarious to
+  soften the effects of GameSpy (GameSpy Industries, Inc.) shutting down their 
+  services. Among this service was a so-called "masterserver".
   
   More information about the masterserver and variations on the protocol by
   333networks can be found online at 
@@ -17,11 +17,13 @@ DESCRIPTION
         http://wiki.333networks.com/index.php/MasterServer
 
 AUTHOR
+
   Darkelarious
   http://333networks.com
   darkelarious@333networks.com
 
 REQUIREMENTS
+
   - Postgresql, MySQL or SQLite3
   - Perl 5.10 or above
   - The following CPAN modules:
@@ -31,6 +33,7 @@ REQUIREMENTS
       AnyEvent::Handle::UDP
       IP::Country::Fast
       Switch
+      JSON
   - screen (or another terminal multiplexer, optional)
 
 INSTALL
@@ -38,33 +41,37 @@ INSTALL
   THE MASTER SERVER IS WRITTEN ON LINUX. IF YOU WANT TO RUN THE SOFTWARE IN 
   MICROSOFT WINDOWS OR APPLE OSX, IT MAY NOT WORK WITHOUT MODIFICATIONS.
   
+  Download the masterserver files from our GIT repository (or zip) and extract
+  them to your favorite server directory.
+  
+  The masterserver stores server addresses in the database. This database must
+  be created manually. SQLite3 users should not forget to chmod the database 
+  file with read/write access. The tables to be created can be found in the 
+  "data/sql" folder in the tables-Pg/SQLite/mysql.sql file. Choose your 
+  preferred database driver and create the tables by importing the SQL file or
+  by manually creating the tables with your SQL shell.
+  
   This repository consists of Perl modules and is run in terminal. The software
   utilizes UDP and TCP connections to receive and send information about game
   servers. Carefully read through the code and documentation before you start 
   randomly querying other game servers and/or masterservers.
   
-  The masterserver stores server addresses in the database. This database must
-  be created manually. SQLite3 users should not forget to chmod the database 
-  file with read/write access. The tables to be created can be found in the 
-  "data/database" folder in the tables-Pg/SQLite/mysql.sql file. Choose your 
-  prefered database driver and created the tables as described below.
-  
 CONFIGURATION
 
   The 333networks masterserver comes with options. These options are found in
-  configuration file "data/masterserver-config.pl". Comments in this file give
-  a brief description. Below, the configuration is discussed in further detail.
+  configuration file "data/masterserver-config.pl". Comments in that file give
+  a brief description. Here, the configuration is discussed in further detail.
   
   Masterserver HOST information
   
   Fill in your contact details here to be able to synchronize with other 
-  masterservers. Though the synchronization process also works without your 
-  contact details, it is preferred and appreciated if you allow other
-  masterservers to synchronize with you too. In addition, third parties may
-  want to retrieve the status of your masterserver. When remote servers query
-  for your contact information, they can see who hosts this masterserver, which
-  build you are running and which games you currently support. This is highly
-  recommended and much appreciated.
+  masterservers. These settings are displayed on the web interfaces and are 
+  shown to others in order to connect to your masterserver.
+  
+  This information is also shown when others use the \status\ query on your
+  server: they can see who hosts this masterserver, which build you are running 
+  and which games you currently support. Filling in this information is highly 
+  recommended and much appreciated by the community.
   
   Database login information
   
@@ -72,22 +79,28 @@ CONFIGURATION
   "lib/MasterServer/Databases" you can see which types are currently supporting
   out of the box. To choose a database type, specify the "dblogin" variable:
   
-  # Postgresql
-  dblogin => ['dbi:Pg:dbname=databasename', 'user', 'password'],
+    # Postgresql
+    dblogin => ['dbi:Pg:dbname=databasename', 'user', 'password'],
  
-  # SQLite
-  dblogin => ["dbi:SQLite:dbname=$ROOT/data/databasename.db",'',''], 
+    # SQLite
+    dblogin => ["dbi:SQLite:dbname=$ROOT/data/databasename.db",'',''], 
 
-  # MySQL
-  dblogin => ["dbi:mysql:database=databasename;host=localhost;port=3306",
+    # MySQL
+    dblogin => ["dbi:mysql:database=databasename;host=localhost;port=3306",
                                                             'user','password'],
   
   Keep in mind that the database needs to be created manually. That means that 
   you first have to create your postgres/mysql user and grant permissions as
   described in the proprietary manuals that come with your database 
   installation. After that, you have to insert the tables manually, which are 
-  provided in the "data/database" folder. The masterserver script requires
-  read-and-write permissions on the SQLite database file.
+  provided in the "data/sql" folder. The masterserver script requires
+  read-and-write permissions on the SQL database file(s).
+
+    dump_db => "daily",
+  
+  It is useful to dump the database every once in a while for backup purposes.
+  This can be done by specifying the "dump_db" option as above, with the options
+  every day, week, month, year or not at all.
   
   Logging
   
@@ -98,14 +111,14 @@ CONFIGURATION
   option takes the message type, separated by spaces. To suppress a message
   type, use the identifier between brackets. Example: 
     
-    [2015-05-19 17:31:47] [load] > Connected to the Postgres database.
+    [2017-05-13 17:31:47] [debug] > Connected to the Postgres database.
   
   In this message, the timestamp of the message is shown first, followed by the
-  identifier "Success". To suppress this type of message, the following
+  identifier "debug". To suppress this type of message, the following
   parameter can be set:
   
-    suppress => " load "
-    suppress => " load beacon secure hostname "
+    suppress => "debug"
+    suppress => "debug beacon secure stat"
   
   More message types can be suppressed, where the types are separated by spaces 
   as shown in the second example. If you want to log a lot of events, you could 
@@ -116,11 +129,13 @@ CONFIGURATION
   
   The masterserver uses UDP and TCP networking. The default port numbers are 
   27900 for server beacons (UDP) and 28900 for serverlists (TCP). Home-hosters
-  have to open those firewall ports.
-  Not all games request data in the same format. Until we established how the
-  request for a different datatype are made, we also provide the ability to
-  send data in the alternate (byte) form manually. More games can be added,
-  separated by spaces.
+  have to open those firewall ports. 
+  
+    timeout_time => 5,
+  
+  Some servers and clients have slow connections or a lot of latency. If you 
+  experience issues with this, increase the time-out time for connections. 
+  Recommended: 5 seconds.
   
   Supported Games & Secure/Validate
   
@@ -138,9 +153,10 @@ CONFIGURATION
   If you use the proper authentication ciphers, keep in mind that some games, 
   like Deus Ex, have more than one cipher, or do not support the challenge at 
   all. Other games may have been modified to counter the vulnerability against
-  long queries. Some UT server have been observed to respond with "Orange" 
+  long queries. Some UT servers have been observed to respond with "Orange" 
   instead of the correct response. Both situations can be in- or excluded in
-  the "ignore_key" options.
+  the "ignore_key" options. Contact 333networks for more information about 
+  obtaining ciphers.
   
   Enable settings
   
@@ -152,6 +168,10 @@ CONFIGURATION
   they validated. When validation is not an option (because missing ciphers), 
   the masterserver can query the addresses individually, to determine whether
   they are valid game servers. Change with "beacon_checker_enabled".
+  
+  This also scans servers periodically to see whether they are still online,
+  what game they are and other server information such as version/compatibility
+  and server name.
   
   Query UCC Applets
   
@@ -170,11 +190,27 @@ CONFIGURATION
   your list. Your masterserver is then queried in the same way as if it were an
   ordinary game server. This also shares the information that you provided
   earlier in the HOST information section. If you do not wish this to happen, 
-  you should disable synchronization entirely. 
+  you should disable synchronization entirely. Change with "sync_enabled".
+  
   Newly received servers are added to the "pending" list as described above. 
-  Change with "sync_enabled". Please note that this will not prevent others 
-  from obtaining the server lists. Attempting to disable this is hypocrite and 
-  ambiguous, as "regular" clients do the same to get the serverlist.
+  Please note that this will not prevent others from obtaining the server 
+  lists. Attempting to disable this is ambiguous, as "regular" clients do the 
+  same to get the serverlist.
+  
+  BY ENABLING SYNCHRONIZATION, YOU AGREE TO BE QUERIED BY OTHER 333NETWORKS 
+  BASED MASTERSERVERS AND SYNCHRONIZATION TOOLS. To us, this sounds perfectly
+  reasonable and logical, but some newlings actually started complaining that 
+  when they leeched off masterservers, others actually queried them too. If you
+  do not want other people querying your masterserver, then why are you running
+  a masterserver in the first place?
+  
+  We do not want authorized people mass-spamming our (or other's) masterservers 
+  with sync request to determine whether the server is online (yes, this 
+  actually happens -- use the \status\ query for that!) or to keep the list 
+  unnecessary updated. Sync requests should not be executed more than 1-2 times 
+  per hour.
+  
+  If you want to sync with us, please email us on info@333networks.com
   
 RUNNING
 
@@ -208,32 +244,41 @@ TOOLS
   not necessary to use these tools. While debugging and writing new features for
   the masterserver, these scripts have been very handy. Therefore, they are
   included in the repository. Poor documentation is included in the scripts and
-  required files themselves.
+  in the required files themselves. Do not forget to change database settings 
+  per tool. Expert knowledge required!
 
 KNOWN ISSUES
+
   There are a few known issues that will be resolved in future versions. The
   following issues are listed and do not need to be reported.
   
-  MySQL does not work with this masterserver version. When any database type 
-  other than Postgresql or SQLite3 is selected, the script either crashes. An 
-  update where this is fixed will follow late 2016 or early 2017.
+  MySQL has not been tested with this masterserver version. When any database
+  other than Postgresql or SQLite3 is selected, the masterserver may crash. 
+  Support for MySQL will follow at some point, hopefully late 2017.
+  
+  Differences in statistics compared to other 333networks-based masterservers.
+  Some other masterserver interfaces may show different statistics than your
+  own masterserver. This may have multiple reasons: servers could have gone
+  offline before your masterserver established whether these addresses were 
+  online; servers may have missed the bi-hourly update moment and show offline,
+  but may get updated in the next cycle; servers send beacons to the other
+  masterserver directly, but have incorrect firewall settings that prevent them
+  from being checked after synchronization. These factors can not be compensated
+  by the 333networks masterservers.
   
   Slow database: currently, database requests are blocking. On slow hardware,
   these requests may take enough time to miss/deny incoming beacons and list
-  requests. No solution available in this version. Proposed solution: AnyEvent's
-  asynchronous database driver(s). The current configuration for 333networks and
-  affiliated servers do not suffer from this problem.
+  requests. No solution available in this version. The current configuration 
+  for 333networks and affiliated servers do not suffer from this problem.
 
   No servers found after syncing with 333networks or others: the syncing 
   protocol also requires authentication. We do not want authorized people mass-
-  spamming our masterservers with sync request to determine whether the server
-  is online (yes, this actually happens -- use the \about\ query for that!) or
-  to keep the list unnecessary updated. Sync requests should not be executed 
-  more than 1-2 times per hour!
-  If you want to sync with us, please email 333networks on info@333networks.com
+  spamming our (or other's) masterservers with unnecessarily fast sync request.
+  If you want to sync with us, please email us on info@333networks.com
 
 COPYING
-  Copyright (c) 2005-2016 Darkelarious & 333networks.com
+
+  Copyright (c) 2005-2017 Darkelarious & 333networks.com
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the

@@ -30,7 +30,7 @@ use Data::Dumper 'Dumper';
 use Cwd 'abs_path';
 
 our $ROOT;
-BEGIN { ($ROOT = abs_path $0) =~ s{/util/ciphers\.pl$}{}; }
+BEGIN { ($ROOT = abs_path $0) =~ s{/util/tools/db_load_ciphers\.pl$}{}; }
 use lib $ROOT.'/lib';
 
 use MasterServer;
@@ -40,7 +40,7 @@ require "$ROOT/data/supportedgames.pl";
 
 
 # open db connection
-my $dbh = DBI->connect('dbi:Pg:dbname=masterserver', 'user', 'password')
+my $dbh = DBI->connect('dbi:Pg:dbname=database', 'user', 'password')
         or die "Cannot connect: $DBI::errstr\n";
 
 # intro

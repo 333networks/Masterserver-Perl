@@ -1,10 +1,10 @@
-
 package MasterServer::UDP::UDPTicker;
 
 use strict;
 use warnings;
 use AnyEvent::Handle::UDP;
 use Exporter 'import';
+use Data::Dumper 'Dumper';
 
 our @EXPORT = qw| udp_ticker |;
 
@@ -45,7 +45,7 @@ sub udp_ticker {
   
   # go through all servers that need querying
   my $server_info = AnyEvent->timer (
-    after     => 75, # first give beacons a chance to uplink
+    after     => 120, # first give beacons a chance to uplink
     interval  => 0.2, # 5 addresses per second is fast enough
     cb        => sub {
       
@@ -71,7 +71,7 @@ sub udp_ticker {
         if (time - $ut_serv{start} > $ut_serv{limit}) {
           if ($ut_serv{c} > 0) {
             # done within defined time, reset
-            %ut_serv = (%ut_serv, %reset)
+            %ut_serv = (%ut_serv, %reset);
           }
         }
 
@@ -89,48 +89,6 @@ sub udp_ticker {
             %oldserv = (%oldserv, %reset);
           }
         }
-        
-        #
-        # else { print "Making overtime!" }
-
-=pod    
-  # FIXME remove this if above works
-  
-        # debug: detect premature resets
-        if (time - $pending{start} > $pending{limit}) {
-          if ($pending{c} == 0) {
-            print "Premature pending reset\n" ;
-          }
-          else{$pending{c} = 0;}
-        }
-        
-        if (time - $updater{start} > $updater{limit}) {
-          if ($updater{c} == 0) {
-            print "Premature updater reset\n" ;
-          }
-          else{$updater{c} = 0;}
-        }
-        
-        if (time - $ut_serv{start} > $ut_serv{limit}) {
-          if ($ut_serv{c} == 0) {
-            print "Premature ut_serv reset\n" ;
-          }
-          else{$ut_serv{c} = 0;}
-        }
-        
-        if (time - $oldserv{start} > $oldserv{limit}) {
-          if ($oldserv{c} == 0) {
-            print "Premature oldserv reset\n" ;
-          }
-          else{$oldserv{c} = 0;}
-        }
-        
-        # are we making overtime on any of the counters yet?
-        %pending = (%pending, %reset) if (time - $pending{start} > $pending{limit});
-        %updater = (%updater, %reset) if (time - $updater{start} > $updater{limit});
-        %ut_serv = (%ut_serv, %reset) if (time - $ut_serv{start} > $ut_serv{limit});
-        %oldserv = (%oldserv, %reset) if (time - $oldserv{start} > $oldserv{limit});
-=cut
       }
 
       #
@@ -242,6 +200,7 @@ sub udp_ticker {
       $n = $self->get_server(
         next_id => $oldserv{id},
         before => 7200,
+        (defined $self->{firstrun}) ? () : (updated => 86400), # FIXME long firstrun time fixed now?
         sort    => "id",
         limit   => 1,
       )->[0] if $self->{beacon_checker_enabled};
@@ -271,7 +230,7 @@ sub udp_ticker {
       if (!defined $self->{firstrun}) {
         # inform that first run is completed
         my $t = time-$self->{firstruntime};
-        my $t_readable = ($t > 60) ? (($t/60). ":". ($t%60). "minutes") : ($t. "seconds");
+        my $t_readable = ($t > 60) ? (int($t/60). " minutes ". ($t%60). " seconds") : ($t. " seconds");
         
         $self->log("info", "First run completed after $t_readable.");
         $self->{firstrun} = 0;

@@ -1,4 +1,3 @@
-
 package MasterServer::Core::Core;
 
 use strict;
@@ -6,6 +5,7 @@ use warnings;
 use AnyEvent;
 use Exporter 'import';
 use DBI;
+$|++;
 
 our @EXPORT = qw | halt select_database_type main |;
 
@@ -47,7 +47,7 @@ sub select_database_type {
   if ( "Pg SQLite mysql" =~ m/$db_type[1]/i) {
     
     # inform us what DB we try to load
-    $self->log("load","Loading $db_type[1] database module.");
+    $self->log("debug","Loading $db_type[1] database module.");
   
     # load dbd and tables/queries for this db type
     MasterServer::load_recursive("MasterServer::Database::$db_type[1]");
@@ -74,11 +74,11 @@ sub main {
   # condition var prevents or allows the program from ending
   $self->{must_halt} = AnyEvent->condvar;
   
-  # force version info
+  # load version info
   $self->version();
   
   # print startup
-  print "Running...\n";
+  print "Running 333networks Master Server Application...\n";
   
   # keep several objects alive outside their original scope
   $self->{scope} = ();
@@ -96,14 +96,24 @@ sub main {
   # determine the type of database and load the appropriate module
   $self->select_database_type();
   
+  ###
   #
-  # Prepare necessary tasks for running the masterserver
+  # execute necessary tasks for running the masterserver
   #
+  ###
   
-  # (re)load the list with ciphers from the config file, into the database
-  $self->load_ciphers();
+  # load the list with ciphers from the config file if no ciphers were detected
+  # update manually with util/tools/db_load_ciphers.pl
+  # then unload the game variables from masterserver memory
+  $self->load_ciphers() unless $self->check_cipher_count();
+  $self->{game} = undef;
   
-  # set first run flag to avoid ignoring servers after downtime
+  # (re)load the list with masterservers and master applets from config
+  # does not clear out old entries, but resets "last_updated" to now
+  $self->load_sync_masters();
+  $self->load_applet_masters();
+  
+  # set first run flag to avoid ignoring/deleting servers after downtime
   $self->{firstrun} = undef;
   $self->{firstruntime} = time;
 
@@ -134,10 +144,14 @@ sub main {
   # provide server lists to clients with the browser host server
   $self->{scope}->{browser_host} = $self->browser_host();
   
+  ###
+  #
   # all modules loaded. Running...
+  #
+  ###
   $self->log("info", "All modules loaded. Masterserver is now running.");
   
-  # prevent main program from ending prematurely
+  # prevent main program from ending as long as no fatal errors occur
   $self->{must_halt}->recv;
 }
 

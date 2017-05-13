@@ -1,4 +1,3 @@
-
 package MasterServer::TCP::BrowserHost;
 
 use strict;
@@ -24,7 +23,7 @@ sub browser_host {
     my $auth = 0; 
     
     # debug -- new connection opened
-    $self->log("tcp","New connection from $a:$p");
+    #$self->log("tcp","New connection from $a:$p");
     
     # prep a challenge
     my $secure = $self->secure_string();
@@ -33,9 +32,9 @@ sub browser_host {
     my $h; $h = AnyEvent::Handle->new(
       fh        => $fh,
       poll      => 'r',
-      timeout   => 5,
-      on_eof    => sub {$self->clean_tcp_handle(@_)},
-      on_error  => sub {$self->clean_tcp_handle(@_)},
+      timeout   => $self->{timeout_time},
+      on_eof    => sub {$self->log("tcp","eof on $a:$p" ); $self->clean_tcp_handle(@_)},
+      on_error  => sub {$self->error($!, "browser $a:$p"); $self->clean_tcp_handle(@_)},
       on_read   => sub {$self->read_tcp_handle($h, $a, $p, $secure, @_)},
     );
     

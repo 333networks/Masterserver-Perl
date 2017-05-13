@@ -1,4 +1,3 @@
-
 package MasterServer::TCP::Syncer;
 
 use strict;
@@ -8,8 +7,7 @@ use AnyEvent::Handle;
 use Exporter 'import';
 
 our @EXPORT = qw| sync_with_master 
-                  process_sync_list 
-                  masterserver_list |;
+                  process_sync_list |;
 
 ################################################################################
 ## Sends synchronization request to another 333networks based master server and
@@ -27,18 +25,20 @@ sub sync_with_master {
   # connection handle
   my $handle; 
   $handle = new AnyEvent::Handle(
-    connect  => [$ms->{ip} => $ms->{tcp}],
-    timeout  => 4,
+    connect  => [$ms->{ip} => $ms->{hostport}],
+    timeout  => $self->{timeout_time},
     poll     => 'r',
-    on_error => sub {$self->error($!, "$ms->{ip}:$ms->{port}"); $handle->destroy;},
-    on_eof   => sub {$self->process_sync_list($sync_list, $ms);        $handle->destroy;},
+    on_error => sub {$self->error($!, "$ms->{ip}:$ms->{hostport}"); $handle->destroy;},
+    on_eof   => sub {$self->process_sync_list($sync_list, $ms);     $handle->destroy;},
     on_read  => sub {
+    
       # receive and clear buffer
       my $m = $_[0]->rbuf;
       $_[0]->rbuf = "";
 
-      # remove string terminator: sometimes trailing slashes are added or 
-      # forgotten by sender, so \secure\abcdef is actually \secure\abcdef{\0}
+      # remove string terminator: sometimes trailing slashes, line endings or
+      # string terminators are added or forgotten by sender, so \secure\abcdef 
+      # is actually \secure\abcdef{\0}
       chop $m if $m =~ m/secure/;
       
       # part 1: receive \basic\\secure\$key
@@ -63,7 +63,7 @@ sub sync_with_master {
         # part 3: request the list \sync\gamenames consisting of space-seperated game names or "all"
         #         compatibility note: old queries use "new", instead treat them as "all".
         my $request  = "\\sync\\"
-                     . (($self->{sync_games}[0] == 0) ? ("all" or "new") : $self->{sync_games}[1])
+                     . (($self->{sync_games}[0] == 0) ? ("all") : $self->{sync_games}[1])
                      . "\\final\\";
         
         # push the request to remote host
@@ -99,8 +99,7 @@ sub process_sync_list {
   
   if (exists $r{echo}) {
     # remote address says...
-    $self->log("error", "$ms->{ip} replied: $r{echo}");
-    
+    $self->log("echo", "$ms->{ip} replied: $r{echo}");
   }
   
   # iterate through the gamenames and addresses
@@ -127,8 +126,8 @@ sub process_sync_list {
             # add server
             $self->syncer_add($a, $p, $gn, $self->secure_string());
             
-            # print address
-            $self->log("add", "syncer added $gn\t$a\t$p");
+            # print address (debug)
+            # $self->log("add", "syncer added $gn\t$a\t$p");
           }
           else {
             # invalid address, log
@@ -144,42 +143,14 @@ sub process_sync_list {
     } # end defined $gn
   } # end while
   
+  # update this sync master in the gamelist with lastseen time
+  $self->update_server_list(
+      ip   => $ms->{ip}, 
+      port => $ms->{port},
+  ) if ($c > 0);
+  
   # end message
-  $self->log("sync-rx", "received $c addresses after syncing from $ms->{ip}:$ms->{tcp}");
-}
-
-################################################################################
-## Determine a list of all unique 333networks-compatible masterservers
-## and return this list. Join the brotherhood!
-################################################################################
-sub masterserver_list {
-  my $self = shift;
-  my %brotherhood;
-  
-  # start with the masterservers defined in our configuration file
-  for my $ms (@{$self->{sync_masters}}) {
-    my $ip = $self->host2ip($ms->{address});
-    $brotherhood{"$ip:$ms->{port}"} = {ip => $ip, tcp => $ms->{port}, udp => $ms->{beacon}} if $ip;
-  }
-  
-  # get the list of uplinking masterservers
-  my $serverlist = $self->get_server(
-        updated   => 3600,
-        gamename  => "333networks",
-        limit     => 50, # more would be ridiculous.. right?..
-      );
-  
-  # overwrite existing entries, add new
-  for my $ms (@{$serverlist}) {
-    $brotherhood{"$ms->{ip}:$ms->{hostport}"} = {ip => $ms->{ip}, tcp => $ms->{hostport}, udp => $ms->{port}};
-  }
-  
-  # masterservers that sync with us can not be derived directly, but by reading
-  # the server log we can add them manually. Lot of work, little gain, as those
-  # syncing masterservers will most likely be uplinking as well between now and 
-  # a few weeks/months.
-  
-  return \%brotherhood;
+  $self->log("sync-rx", "received $c addresses after syncing from $ms->{ip}:$ms->{hostport}");
 }
 
 1;

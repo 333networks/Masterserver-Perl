@@ -1,4 +1,3 @@
-
 package MasterServer::UDP::BeaconCatcher;
 
 use strict;
@@ -45,8 +44,7 @@ sub on_beacon_receive {
   my ($port, $iaddr) = sockaddr_in($pa);
   my $peer_addr      = inet_ntoa($iaddr);
   
-  # if the beacon has a length longer than a certain amount, assume it is
-  # a fraud or crash attempt
+  # assume fraud/crash attempt if response too long
   if (length $b > 64) {
     # log
     $self->log("attack","length exceeded in beacon: $peer_addr:$port sent $b");
@@ -55,17 +53,20 @@ sub on_beacon_receive {
     $b = substr $b, 0, 64;
   }
 
+  # FIXME: note to self: order is important when having combined queries!
+  # TODO:  find a more elegant and long-time solution for this.
+
+  # if this is a secure response, verify the response
+  $self->process_udp_validate($b, $peer_addr, $port, undef) 
+    if ($b =~ m/\\validate\\/);
+
   # if a heartbeat format was detected...
   $self->process_udp_beacon($udp, $pa, $b, $peer_addr, $port) 
     if ($b =~ m/\\heartbeat\\/ && $b =~ m/\\gamename\\/);
-
-  # or if this is a secure response, verify the response
-  $self->process_udp_validate($b, $peer_addr, $port, undef) 
-    if ($b =~ m/\\validate\\/);
   
-  # or if other masterservers check if we're still alive
-  $self->process_udp_basic($udp, $pa, $b, $peer_addr) 
-    if ($b =~ m/\\basic\\/ || $b =~ m/\\status\\/ || $b =~ m/\\info\\/);
+  # if other masterservers check if we're still alive
+  $self->process_udp_secure($udp, $pa, $b, $peer_addr) 
+    if ($b =~ m/\\secure\\/ || $b =~ m/\\basic\\/ || $b =~ m/\\status\\/ || $b =~ m/\\info\\/);
 }
 
 1;

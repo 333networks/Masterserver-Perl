@@ -1,4 +1,3 @@
-
 package MasterServer::TCP::UCCAppletQuery;
 
 use strict;
@@ -18,7 +17,7 @@ sub query_applet {
   my ($self, $ms) = @_;
   
   # be nice to notify
-  $self->log("tcp","start querying $ms->{ip}:$ms->{port} for '$ms->{game}' games");
+  $self->log("tcp","start querying $ms->{ip}:$ms->{port} for '$ms->{gamename}' games");
 
   # list to store all IPs in.
   my $master_list = "";
@@ -27,7 +26,7 @@ sub query_applet {
   my $handle; 
   $handle = new AnyEvent::Handle(
     connect  => [$ms->{ip} => $ms->{port}],
-    timeout  => 5,
+    timeout  => $self->{timeout_time},
     poll     => 'r',
     on_error => sub {$self->error($!, "$ms->{ip}:$ms->{port}"); $handle->destroy;},
     on_eof   => sub {$self->process_ucc_applet_query($master_list, $ms);  $handle->destroy;},
@@ -36,7 +35,7 @@ sub query_applet {
       # receive and clear buffer
       my $m = $_[0]->rbuf;
       $_[0]->rbuf = "";
-
+      
       # remove string terminator
       chop $m if $m =~ m/secure/;
           
@@ -48,20 +47,21 @@ sub query_applet {
         $m =~ s/\\([^\\]+)\\([^\\]+)/$r{$1}=$2/eg;
 
         # respond to challenge
-        my $validate = $self->validate_string(gamename => $ms->{game},
+        my $validate = $self->validate_string(gamename => $ms->{gamename},
                                               enctype  => $r{enctype}||0,
                                               secure   => $r{secure});
 
         # send response
-        $handle->push_write("\\gamename\\$ms->{game}\\location\\0\\validate\\$validate\\final\\");
+        $handle->push_write("\\gamename\\$ms->{gamename}\\location\\0\\validate\\$validate\\final\\");
         
         # part 3: also request the list \list\gamename\ut -- skipped in UCC applets
-        $handle->push_write("\\list\\\\gamename\\$ms->{game}\\final\\");
+        $handle->push_write("\\list\\\\gamename\\$ms->{gamename}\\final\\");
         
       }
       
       # part 3b: receive the entire list in multiple steps.
-      if ($m =~ m/\\ip\\/) {
+      # $m contains \ip\ or part of that string
+      else {
         # add buffer to the list
         $master_list .= $m;
       }

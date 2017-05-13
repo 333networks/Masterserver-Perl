@@ -1,7 +1,7 @@
 package MasterServer;
 
 #
-# Last update: Sun 20 Nov 2016 19:14 GMT+1
+# Last update: Sat 13 May 2017 13:37 GMT+1
 #
 
 our (%S, $ROOT);
@@ -32,7 +32,7 @@ our %S = (
 #                                                                              #
 # Login credentials for the database that was created manually before.         #
 # Yes, that means that you need to create the database and tables on your own. #
-# Use only one option: Postgresql, SQLite, MySQL (only tested with Postgresql) #
+# Use only one option: Postgresql, SQLite, MySQL (not tested with MySQL)       #
 #                                                                              #
 ################################################################################
 
@@ -40,11 +40,15 @@ our %S = (
   dblogin => ['dbi:Pg:dbname=masterserver', 'user', 'password'],
  
   # SQLite
-  #dblogin => ["dbi:SQLite:dbname=$ROOT/data/testdatabase.db",'',''], 
+  #dblogin => ["dbi:SQLite:dbname=$ROOT/data/masterserver.db",'',''], 
 
   # MySQL
-  #dblogin => ["dbi:mysql:database=database_name;host=localhost;port=3306",'user','password'],
-  
+  #dblogin => ["dbi:mysql:database=masterserver;host=localhost;port=3306",'user','password'],
+
+  # backup database dump
+  # new backup for every period of time? options: daily, weekly, monthly, yearly, none
+  dump_db => "daily",
+
 ################################################################################
 # Logging configuration                                                        #
 #                                                                              #
@@ -60,20 +64,22 @@ our %S = (
   log_rotate => "weekly",
   
   # print both to screen and log (1=screen+log, 0=only log)
-  printlog  => 0, 
+  printlog  => 1, 
   
   # which messages do you NOT want to see in the logs (and screen)?
   # show all entries
   #suppress =>  "none",
   
-  # disable most messages, except for important events
-  suppress => "udp add update tcp udp delete uplink stat beacon secure utserver hostname kfstat debug",
+  # show only important events
+  suppress => "debug beacon uplink secure tcp add update delete",
+  
+  # more keywords that can be suppressed: 
+  # applet-rx error info kfstat stat sync-rx sync-tx list ignore dump support
   
 ################################################################################
 # Network settings                                                             #
 #                                                                              #
 # Beacon UDP port (beacons) and Browser TCP port (serverlist)                  #
-# Settings for games that require different data formats                       #
 #                                                                              #
 ################################################################################
 
@@ -81,9 +87,9 @@ our %S = (
   listen_port   => 28900, # default 28900
   beacon_port   => 27900, # default 27900    
 
-  # these games require a special hex format instead of \ip\ip:port\
-  # if the current protocol is correct, you don't need to touch this ever.
-  hex_format => "",
+  # Timeout time for connections. Some clients are on slow connections
+  # or are queued for a relatively long time. Recommended: 5s
+  timeout_time => 10,
 
 ################################################################################
 # Secure/Validate configuration                                                #
@@ -118,7 +124,7 @@ our %S = (
 
   # Beacon Checker query all addresses in the database, requesting "basic" and 
   # "info". Execute at least twice per hour, to avoid time-outs in own data.
-  # disabling breaks support for certain games [citation needed].
+  # disabling breaks support for certain games [like tribesv].
   beacon_checker_enabled  => 1,
 
   # Collect server information for the 333networks main site. Identical
@@ -130,18 +136,17 @@ our %S = (
 ################################################################################
 # Synchronization settings                                                     #
 #                                                                              #
-# Request the masterlist for selected or all games from other 333networks-     #
-# based masterservers. Also uplinks to these servers in return.                #
-#                                                                              #
+# Send beacons to the following selected masterservers. This joins us in the   #
+# 333networks network and makes two-way synchronization possible for all games #
+# or only selected games. Requires at least one entry to a live masterserver.  #
 ################################################################################
   
-  # additional masters to sync with (in addition to db-entries)
+  # default masterservers to uplink to
   sync_masters  => [
-        { address => "master.333networks.com", port => 28900, beacon => 27900 }, # default
+        { address => "master.333networks.com", port => 28900, beacon => 27900 },
         { address => "master.noccer.de",       port => 28900, beacon => 27900 },
         { address => "master.oldunreal.com",   port => 28900, beacon => 27900 },
         { address => "master.errorist.tk",     port => 28900, beacon => 27900 },
-#        { address => "master.333networks.com", port => 28905, beacon => 28906 }, # if available, devmaster
   ],
   
   # sync all or selected games?
@@ -157,10 +162,13 @@ our %S = (
 # Request the masterlist for single games from the remote UCC applet or        #
 # equivalent.                                                                  #
 #                                                                              #
+# Arguments: domain/ip, tcp  port, array of gamenames                          #
 ################################################################################        
   master_applet => [
-    {ip => "utmaster.epicgames.com",       port => 28900, game => "ut"},
-    {ip => "master.newbiesplayground.net", port => 28900, game => "unreal"},
+    {address => "utmaster.epicgames.com",   port => 28900, games => [qw|ut unreal|]},
+    {address => "master.hypercoop.tk",      port => 28900, games => [qw|unreal|]},
+    {address => "sof1master.megalag.org",   port => 28900, games => [qw|sofretail|]},
+    {address => "master.deusexnetwork.com", port => 28900, games => [qw|deusex|]},
   ],
 
 ################################################################################
@@ -169,12 +177,12 @@ our %S = (
 # Read player statistics from the KFstats file in the UT2004 configuration.    #
 # Applies to 333networks Killing Floor Server only!                            #
 ################################################################################
-
-  #kfstats.ini file location
-  kfstats_file =>  "/home/darkelarious/ut2004/System/KFStats.ini",
   
   # Collect kfstats info
   kfstats_enabled  => 0,
+
+  #kfstats.ini file location
+  kfstats_file =>  "/UT2004/System/KFStats.ini",
   
 ); #end configuration %S
 

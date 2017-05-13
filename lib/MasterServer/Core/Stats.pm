@@ -1,4 +1,3 @@
-
 package MasterServer::Core::Stats;
 
 use strict;
@@ -31,9 +30,8 @@ sub update_stats {
     $self->write_stat(%opt);
   }
 
-  #done
+  # done
   $self->log("stat", "Updated all game statistics.");
-  
 }
 
 1;

@@ -1,4 +1,3 @@
-
 package MasterServer::TCP::Handler;
 
 use strict;
@@ -28,14 +27,12 @@ sub read_tcp_handle {
   # did the client validate already?
   my $val = $self->{browser_clients}->{$h}[1];
   
-  # in case of errors, save the original message
+  # in case of errors, log the original message
   my $rxbuf = $m;
+  #$self->log("debug","$a:$p sent $rxbuf");
 
   # allow multiple blocks to add to the response string
   my $response = "";
-  
-  # print debug values
-  $self->log("debug","$a:$p sent $rxbuf");
      
   # replace empty values for the string "undef" and replace line endings from netcatters 
   # parse the received data and extrapolate all the query commands found
@@ -75,13 +72,12 @@ sub read_tcp_handle {
                    "Contact us via 333networks.com\\final\\");
 
     # and log it
-    $self->log("error","invalid request from Browser $a:$p with unknown message \"$rxbuf\".");
+    $self->log("error","invalid request from browser $a:$p with unknown message \"$rxbuf\".");
   } # end if weird query
   else {
     $c->push_write($response . "\\final\\") if ($response ne "");
   }
 }
-
 
 ################################################################################
 ## The master server opens the connection with the \secure\ challenge. The
@@ -95,7 +91,8 @@ sub handle_validate {
   my $val = 0;
   
   # pass or fail the secure challenge
-  if (exists $r->{gamename} && length $self->get_game_props(lc $r->{gamename})->{cipher} > 1 ) {
+  if (exists $r->{gamename} && $self->get_game_props($r->{gamename})) {
+
     # game exists and we have the key to verify the response
     $val = $self->compare_challenge(
                 gamename => $r->{gamename},
@@ -113,7 +110,7 @@ sub handle_validate {
     $self->log("support", "received unknown gamename request \"$r->{gamename}\" from $a:$p.");
   }
 
-  # log (the spam!)
+  # log (debug)
   #$self->log("secure","$a:$p validated with $val for $r->{gamename}, $secure, $r->{validate}");
   
   # return auth status
@@ -132,6 +129,7 @@ sub handle_validate {
 ##
 ## NOTE: client does not need to validate to be allowed to perform this
 ## query.
+## TODO: deprecate about query -- info will now be in udp query!
 ################################################################################
 sub handle_about {
   my ($self, $about, $a, $p) = @_;
@@ -197,7 +195,7 @@ sub handle_list {
     my $data = "";
     
     # determine the return format
-    if ($self->{hex_format} =~ m/$r->{gamename}/i or $r->{list} =~ /^cmp$/i) {
+    if ($r->{list} =~ /^cmp$/i) {
       # return addresses as byte format (ip=ABCD port=EF)
       $data .= $self->compile_list_cmp($r->{gamename});
     }
@@ -216,6 +214,7 @@ sub handle_list {
     $self->log("list","$a:$p successfully retrieved the list for $r->{gamename}.");
     
     # clean and close the connection
+    #$self->log("tcp","closing $a:$p");
     $self->clean_tcp_handle($c);
   }
 
@@ -229,6 +228,7 @@ sub handle_list {
     $self->log("error","browser $a:$p failed validation for $r->{gamename}");
 
     # clean and close the connection
+    #$self->log("tcp","closing $a:$p");
     $self->clean_tcp_handle($c);        
   }
 }
@@ -256,6 +256,7 @@ sub handle_sync {
     $self->log("sync-tx","$a:$p successfully synced.");
     
     # clean and close the connection
+    #$self->log("tcp","closing $a:$p");
     $self->clean_tcp_handle($c);
     
   }
@@ -270,6 +271,7 @@ sub handle_sync {
     $self->log("error","$a:$p failed synchronization.");
 
     # clean and close the connection
+    #$self->log("tcp","closing $a:$p");
     $self->clean_tcp_handle($c);        
   }
 }  

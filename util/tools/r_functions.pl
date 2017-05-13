@@ -5,6 +5,9 @@ use warnings;
 use Encode;
 use AnyEvent;
 use AnyEvent::Handle;
+use IP::Country::Fast;
+use Socket;
+use POSIX qw/strftime/;
 
 our %S;
 
@@ -19,13 +22,6 @@ sub valid_address {
   my ($a, $p) = ($h =~ m/:/) ? $h =~ /(.*):(.*)/ : ($h,0);
   return (undef,undef) unless ($a && $p);
   
-  # resolve hostname when needed -- shouldn't even be in the list! FIXME
-  #if($a =~ /[a-zA-Z]/g) {
-  #   my $raw_addr = (gethostbyname($a))[4];
-  #   my @octets = unpack("C4", $raw_addr);
-  #   $a = join(".", @octets);
-  #}
-  
   # check if IP and port are in valid range
   $a = ($a =~ '\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b') ? $a : 0;
   $p = (0 < $p && $p <= 65535) ? $p : 0;
@@ -34,6 +30,12 @@ sub valid_address {
   for (qw|192.168.(.\d*).(.\d*) 127.0.(.\d*).(.\d*) 10.0.(.\d*).(.\d*)|){$a = 0 if ($a =~ m/$_/)}
 
   return ($a, $p);
+}
+
+sub host2ip {
+  my $name = shift;
+  my $unpack = inet_aton($name) if $name;
+  return inet_ntoa($unpack) if $unpack;
 }
 
 sub query_master {
@@ -48,7 +50,7 @@ sub query_master {
       timeout  => 15,
       poll     => 'r',
       on_error => sub {
-        print "($ms->{ip}, $g) $!\n"; 
+        #print "($ms->{ip}, $g) $!\n";
         $handle->destroy;
         $cv->send;
         },
@@ -105,7 +107,12 @@ sub process_received_data {
     }
   }
   
-  print "found $c \t$g \taddresses at $ms->{ip}.\n" if ($c > 0 );
+  # log addresses per game per master
+  #print "found $c \t$g \taddresses at $ms->{ip}.\n" if ($c > 0 );
+  
+  # print only responsive gamenames (useful for making selections)
+  print "$g " if ($c > 0 );
+
 }
 
 1;

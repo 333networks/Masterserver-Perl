@@ -1,4 +1,3 @@
-
 package MasterServer::Core::Secure;
 
 use strict;
@@ -25,7 +24,7 @@ sub load_ciphers {
   # first delete the old cipher database
   $self->clear_ciphers();
   
-  # start inserting ciphers (lots of 'em)
+  # start inserting ciphers (use transactions for slow systems)
   $self->{dbh}->begin_work;
   
   # iterate through the game list
@@ -36,10 +35,11 @@ sub load_ciphers {
     $opt{gamename}      = lc $_;
     $opt{cipher}        = $self->{game}->{$_}->{key};
     $opt{description}   = $self->{game}->{$_}->{label} || 'Unknown Game';
-    $opt{default_qport} = $self->{game}->{$_}->{port} || 0;
+    $opt{default_qport} = $self->{game}->{$_}->{port}  || 0;
     
     # insert the game/cipher in the db or halt on error
     if ($self->insert_cipher(%opt) < 0) {
+      # failure causes a fatal error and exits
       $self->{dbh}->rollback;
       $self->halt();
     }
@@ -48,19 +48,14 @@ sub load_ciphers {
   # commit
   $self->{dbh}->commit;
   $self->log("info", "Cipher database successfully updated!");
-  
-  # unload the game variables from masterserver memory
-  $self->{game} = undef;
-  
 }
-
 
 ################################################################################
 # generate a random string of 6 characters long for the \secure\ challenge
 # returns string
 ################################################################################
 sub secure_string {
-  # spit out a random string, only uppercase characters
+  # generate a random string, only uppercase characters
   my @c = ('A'..'Z');
   my $s = "";
   $s .= $c[rand @c] for 1..6;
@@ -82,23 +77,21 @@ sub compare_challenge {
   # secure string too long? (because vulnerable in UE)
   return 0 if (length $o{secure} > 16);
   
-  # additional conditions to skip checking provided?
-  $o{ignore} = "" unless $o{ignore};
-  
   # ignore this game if asked to do so
-  if ($o{ignore} =~ m/$o{gamename}/i){
-    $self->log("secure", "ignored beacon validation for $o{gamename}");
+  if ($self->{ignore_browser_key} =~ m/$o{gamename}/i){
+    $self->log("ignore", "ignored beacon validation for $o{gamename}");
     return 1;
   } 
 
   # enctype given?
   $o{enctype} = 0 unless $o{enctype};  
-  
-  # get cipher corresponding with the gamename
-  my $cip = $self->get_game_props($o{gamename})->{cipher};  
-  
+
   # calculate validate string
-  my $val = get_validate_string($cip, $o{secure}, $o{enctype});
+  my $val = get_validate_string(
+    $self->get_game_props($o{gamename})->{cipher},
+    $o{secure},
+    $o{enctype}
+  );
 
   # return whether or not they match
   return ($val eq $o{validate});
@@ -136,33 +129,33 @@ sub validate_string {
 # conversion and modification of the algorithm by Darkelarious, June 2014 with
 # explicit, written permission of Luigi Auriemma.
 #
+# use pre-built rotations for enctype 
+# -- see GSMSALG 0.3.3 reference for copyright and more information
+my @enc_chars = ( qw |
+  001 186 250 178 081 000 084 128 117 022 142 142 002 008 054 165 
+  045 005 013 022 082 007 180 034 140 233 009 214 185 038 000 004 
+  006 005 000 019 024 196 030 091 029 118 116 252 080 081 006 022 
+  000 081 040 000 004 010 041 120 081 000 001 017 082 022 006 074 
+  032 132 001 162 030 022 071 022 050 081 154 196 003 042 115 225 
+  045 079 024 075 147 076 015 057 010 000 004 192 018 012 154 094 
+  002 179 024 184 007 012 205 033 005 192 169 065 067 004 060 082 
+  117 236 152 128 029 008 002 029 088 132 001 078 059 106 083 122 
+  085 086 087 030 127 236 184 173 000 112 031 130 216 252 151 139 
+  240 131 254 014 118 003 190 057 041 119 048 224 043 255 183 158 
+  001 004 248 001 014 232 083 255 148 012 178 069 158 010 199 006 
+  024 001 100 176 003 152 001 235 002 176 001 180 018 073 007 031 
+  095 094 093 160 079 091 160 090 089 088 207 082 084 208 184 052 
+  002 252 014 066 041 184 218 000 186 177 240 018 253 035 174 182 
+  069 169 187 006 184 136 020 036 169 000 020 203 036 018 174 204 
+  087 086 238 253 008 048 217 253 139 062 010 132 070 250 119 184 
+|);
+#
 # args: game cipher, 6-char challenge string, encryption type
 # returns: validate string (usually 8 characters long)
 # !! requires cipher hash to be configured in config! (imported or otherwise)
 ################################################################################
 sub get_validate_string {
   my ($cipher_string, $secure_string, $enctype) = @_;
-  
-  # use pre-built rotations for enctype 
-  # -- see GSMSALG 0.3.3 reference for copyright and more information
-  my @enc_chars = ( qw |
-    001 186 250 178 081 000 084 128 117 022 142 142 002 008 054 165 
-    045 005 013 022 082 007 180 034 140 233 009 214 185 038 000 004 
-    006 005 000 019 024 196 030 091 029 118 116 252 080 081 006 022 
-    000 081 040 000 004 010 041 120 081 000 001 017 082 022 006 074 
-    032 132 001 162 030 022 071 022 050 081 154 196 003 042 115 225 
-    045 079 024 075 147 076 015 057 010 000 004 192 018 012 154 094 
-    002 179 024 184 007 012 205 033 005 192 169 065 067 004 060 082 
-    117 236 152 128 029 008 002 029 088 132 001 078 059 106 083 122 
-    085 086 087 030 127 236 184 173 000 112 031 130 216 252 151 139 
-    240 131 254 014 118 003 190 057 041 119 048 224 043 255 183 158 
-    001 004 248 001 014 232 083 255 148 012 178 069 158 010 199 006 
-    024 001 100 176 003 152 001 235 002 176 001 180 018 073 007 031 
-    095 094 093 160 079 091 160 090 089 088 207 082 084 208 184 052 
-    002 252 014 066 041 184 218 000 186 177 240 018 253 035 174 182 
-    069 169 187 006 184 136 020 036 169 000 020 203 036 018 174 204 
-    087 086 238 253 008 048 217 253 139 062 010 132 070 250 119 184 
-  |),
 
   # convert to array of characters
   my @cip = split "", $cipher_string;

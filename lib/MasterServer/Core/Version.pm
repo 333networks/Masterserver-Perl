@@ -1,4 +1,3 @@
-
 package MasterServer::Core::Version;
 
 use strict;
@@ -27,16 +26,16 @@ sub version {
   #
 
   # master type
-  $self->{build_type}     = "333networks Masterserver-Perl pre-release";
+  $self->{build_type}     = "333networks Masterserver-Perl Multidb";
   
   # version
-  $self->{build_version}  = "2.2.5";
+  $self->{build_version}  = "2.3.0";
   
   # short version for uplinks
   $self->{short_version}  = "MS-perl $self->{build_version}";
   
   # date yyyy-mm-dd
-  $self->{build_date}     = "2016-11-19";
+  $self->{build_date}     = "2017-05-13";
   
   #author, email
   $self->{build_author}   = "Darkelarious, darkelarious\@333networks.com";

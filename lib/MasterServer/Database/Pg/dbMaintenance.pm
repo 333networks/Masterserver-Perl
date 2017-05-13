@@ -5,7 +5,7 @@ use warnings;
 use Exporter 'import';
 
 our @EXPORT = qw| delete_old_pending 
-                  remove_pending |;
+                      remove_pending |;
 
 ################################################################################
 ## delete unresponsive servers from the pending list

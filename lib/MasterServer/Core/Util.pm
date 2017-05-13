@@ -1,4 +1,3 @@
-
 package MasterServer::Core::Util;
 
 use strict;
@@ -24,9 +23,9 @@ sub ip2country {
 ################################################################################
 sub host2ip {
   my ($self, $name) = @_;
-  return inet_ntoa(inet_aton($name)) if $name;
+  my $unpack = inet_aton($name) if $name;
+  return inet_ntoa($unpack) if $unpack;
 }
-
 
 ################################################################################
 ## Verify whether a given domain name or IP address and port are valid.
@@ -36,8 +35,8 @@ sub valid_address {
   my ($self, $a, $p) = @_;
 
   # check if ip and port are in valid range
-  my $val_addr = ($a =~ '\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b') if $a;
-  my $val_port = (0 < $p && $p <= 65535) if $p;
+  my $val_addr = ($a =~ '^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$') if $a;
+  my $val_port = ($p =~  m/^\d+$/ && 0 < $p && $p <= 65535) if $p;
   
   # exclude addresses where we don't want people sniffing
   for (qw|192.168.(.\d*).(.\d*) 127.0.(.\d*).(.\d*) 10.0.(.\d*).(.\d*)|){$val_addr = 0 if ($a =~ m/$_/)}
@@ -72,7 +71,7 @@ sub db_all {
 }  
 
 ################################################################################
-# sqlprint (TUWF):
+# sqlprint (TUWF, Yorhel):
 #   ?    normal placeholder
 #   !l   list of placeholders, expects arrayref
 #   !H   list of SET-items, expects hashref or arrayref: format => (bind_value || \@bind_values)

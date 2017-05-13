@@ -1,9 +1,7 @@
-
 package MasterServer::TCP::ListCompiler;
 
 use strict;
 use warnings;
-
 use Exporter 'import';
 
 our @EXPORT = qw| compile_list compile_list_cmp compile_sync |;

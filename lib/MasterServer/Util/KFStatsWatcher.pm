@@ -1,4 +1,3 @@
-
 package MasterServer::Util::KFStatsWatcher;
 
 use strict;
@@ -49,11 +48,10 @@ sub read_kfstats {
         }
       }
       
-      #notify
+      # notify
       $self->log("kfstat", "Updated Killing Floor player stats.");
     }
   );
 }
 
-    
 1;

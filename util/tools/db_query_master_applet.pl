@@ -26,11 +26,15 @@ require "r_lists.pl";
 our $dbh;
 
 my @data = (
- {ip => "dev.333networks.com", port => 28905, games => [qw|ut unreal deusex rune|]},
+  {ip => "master.hypercoop.tk",     port => 28900, games => [qw|ut unreal|]},
+  {ip => "utmaster.epicgames.com",  port => 28900, games => [qw|ut unreal|]},
+  {ip => "master.deusexnetwork.com",port => 28900, games => [qw|deusex|]},
 );
 
 for my $ms (@data) {
   sleep 1;
+  
+  print "\n\n$ms->{ip}, $ms->{port}\n";
   query_master($ms);
 }
 

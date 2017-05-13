@@ -1,13 +1,21 @@
-
 package MasterServer::Database::Pg::dbCiphers;
 
 use strict;
 use warnings;
 use Exporter 'import';
 
-our @EXPORT = qw| clear_ciphers 
+our @EXPORT = qw| check_cipher_count
+                  clear_ciphers 
                   insert_cipher 
                   get_game_props |;
+
+################################################################################
+## Check if ciphers exist
+################################################################################
+sub check_cipher_count {
+  my $self = shift;
+  return $self->db_all('SELECT count(*) as num from games')->[0]->{num};
+}
 
 ################################################################################
 ## Clear all existing ciphers from the database
@@ -43,15 +51,13 @@ sub insert_cipher {
 
 ################################################################################
 ## get the cipher, description and default port that goes with given gamename
+## returns only the first item if multiple items
 ################################################################################
 sub get_game_props {
   my ($self, $gn) = @_;
   
   # get cipher from db if gamename exists
-  return $self->{dbh}->selectall_arrayref(
-    'SELECT * FROM games WHERE gamename = ?', 
-    {Slice=>{}}, 
-    lc $gn)->[0];
+  return $self->db_all('SELECT * FROM games WHERE gamename = ?', lc $gn)->[0];
 }
 
 1;

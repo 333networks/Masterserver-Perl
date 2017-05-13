@@ -1,4 +1,3 @@
-
 package MasterServer::Database::Pg::dbUTServerInfo;
 
 use strict;

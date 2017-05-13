@@ -1,4 +1,3 @@
-
 package MasterServer::Database::Pg::dbAddServers;
 
 use strict;
@@ -26,7 +25,10 @@ sub add_server_new {
     $o{direct}   ? (  'b333ms = CAST(? AS BOOLEAN)' => $o{direct})      : (),
     $o{updated}  ? ( 'updated = to_timestamp(?)'    => $o{updated})     : (),
     $o{beacon}   ? (  'beacon = to_timestamp(?)'    => $o{beacon})      : (),
-    $o{gamename} ? ('gamename = ?'                  => lc $o{gamename}) : (),
+    
+    # some applets have incorrect gamename lists, let udpticker update this 
+    # entry instead. this way, applets don't overwrite with incorrect data
+    #$o{gamename} ? ('gamename = ?'                  => lc $o{gamename}) : (),
   );
 
   my($q, @p) = sqlprint("UPDATE serverlist !H 
@@ -37,12 +39,10 @@ sub add_server_new {
   # if serverlist was updated
   return 0 if ($n > 0);
   
-  
   # try updating it in pending
   %H = (
     $o{added}      ? (     'added = ?' => $o{added})       : (),
     $o{secure}     ? (    'secure = ?' => $o{secure})      : (),
-    $o{gamename}   ? (  'gamename = ?' => lc $o{gamename}) : (),
     $o{beaconport} ? ('beaconport = ?' => $o{beaconport})  : (),
   );
 
@@ -119,7 +119,7 @@ sub syncer_add {
   # if address is in the list AND up to date, 
   # acknowledge its existance but don't do anything with it
   my $u = $self->{dbh}->do(
-     "SELECT * FROM serverlist 
+     "SELECT count(*) FROM serverlist 
       WHERE ip = ? 
       AND port = ?
       AND updated > to_timestamp(?)",
@@ -136,8 +136,8 @@ sub syncer_add {
       AND heartbeat = ?",
       undef, $secure, $ip, $port);  
 
-  # notify
-  $self->log("update","$ip:$port was updated by syncer") if ($u > 0);
+  # notify (debug)
+  #$self->log("update","$ip:$port was updated by syncer") if ($u > 0);
   
   # return 1 if found
   return 1 if ($u > 0);
@@ -148,8 +148,8 @@ sub syncer_add {
       SELECT ?, ?, ?, ?",
       undef, $ip, $port, lc $gamename, $secure);
                             
-   # notify
-   $self->log("add","beacon: $ip:$port was added for $gamename after sync") if ($u > 0);
+   # notify (debug)
+   #$self->log("add","beacon: $ip:$port was added for $gamename after sync") if ($u > 0);
    
    # return 2 if added new
    return 2 if ($u > 0);

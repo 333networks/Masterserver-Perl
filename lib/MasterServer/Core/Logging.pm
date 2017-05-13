@@ -1,4 +1,3 @@
-
 package MasterServer::Core::Logging;
 
 use strict;
@@ -6,6 +5,7 @@ use warnings;
 use Switch;
 use POSIX qw/strftime/;
 use Exporter 'import';
+$|++;
 
 our @EXPORT = qw| log error |;
 
@@ -46,41 +46,34 @@ sub error {
   }
 }
 
-
 ################################################################################
 ## Log to file and print to screen.
 ## args: $self, message_type, message
 ################################################################################
 sub log {
   my ($self, $type, $msg) = @_;
-  
-  # flush
-  $| = 1;
-  
-  # parse time of log entry and prep for rotating log
-  my $time    = strftime('%Y-%m-%d %H:%M:%S',localtime);
-  my $yearly  = strftime('-%Y',localtime);
-  my $monthly = strftime('-%Y-%m',localtime);
-  my $weekly  = strftime('-%Y-week%U',localtime);
-  my $daily   = strftime('-%Y-%m-%d',localtime);
-  
+
   # is the message suppressed in config?
   return if (defined $type && $self->{suppress} =~ m/$type/i);
+
+  # parse time of log entry and prep for rotating log
+  my $time    = strftime('%Y-%m-%d %H:%M:%S',localtime);
   
   # determine filename
   my $f = "MasterServer";
   
   # rotate log filename according to config
-  $f .= $daily    if ($self->{log_rotate} =~ /^daily$/i   );
-  $f .= $weekly   if ($self->{log_rotate} =~ /^weekly$/i  );
-  $f .= $monthly  if ($self->{log_rotate} =~ /^monthly$/i );
-  $f .= $yearly   if ($self->{log_rotate} =~ /^yearly$/i  );
+  $f .= strftime('-%Y-%m-%d',localtime)  if ($self->{log_rotate} =~ /^daily$/i  );
+  $f .= strftime('-%Y-week%U',localtime) if ($self->{log_rotate} =~ /^weekly$/i );
+  $f .= strftime('-%Y-%m',localtime)     if ($self->{log_rotate} =~ /^monthly$/i);
+  $f .= strftime('-%Y',localtime)        if ($self->{log_rotate} =~ /^yearly$/i );
   $f .= ".log";
   
   # put log filename together
   my $logfile = $self->{log_dir}.((substr($self->{log_dir},-1) eq "/")?"":"/").$f;
 
-  print "[$time] [$type] > $msg\n" if $self->{printlog};
+  # print to stdout if enabled
+  print "[$time]\t[$type]\t$msg\n" if $self->{printlog};
   
   # temporarily disable the warnings-to-log, to avoid infinite recursion if
   # this function throws a warning.
@@ -98,6 +91,5 @@ sub log {
   }
   $SIG{__WARN__} = $old;
 }
-
 
 1;

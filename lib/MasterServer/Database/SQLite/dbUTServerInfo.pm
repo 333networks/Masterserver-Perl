@@ -1,4 +1,3 @@
-
 package MasterServer::Database::SQLite::dbUTServerInfo;
 
 use strict;

@@ -38,18 +38,18 @@ sub process_udp_beacon {
     
     # if no entry exists, report error.
     if (defined $game_props) {
-    
-      # some games (like bcommander) have a default port and don't send a heartbeat port.
-      $r{heartbeat} = $game_props->{heartbeat} if ($r{heartbeat} == 0);
+      
+      # validate heartbeat data
+      my $heartbeat = ($r{heartbeat} || $game_props->{default_qport});
       
       #
       # verify valid server address (ip+port)
-      if ($self->valid_address($peer_addr,$r{heartbeat})) {
+      if ($self->valid_address($peer_addr,$heartbeat)) {
       
         # check if the entry already was not added within the last 5 seconds, throttle otherwise
         my $throttle = $self->get_pending(
           ip        => $peer_addr, 
-          heartbeat => $r{heartbeat}, 
+          heartbeat => $heartbeat, 
           gamename  => $r{gamename},
           after     => 5,
           sort      => "added",
@@ -64,7 +64,7 @@ sub process_udp_beacon {
         # or add to pending with new secure string.
         my $auth = $self->add_server_new(ip         => $peer_addr, 
                                          beaconport => $port, 
-                                         heartbeat  => $r{heartbeat}, 
+                                         heartbeat  => $heartbeat, 
                                          gamename   => $r{gamename}, 
                                          secure     => $secure,
                                          direct     => 1,
@@ -77,8 +77,8 @@ sub process_udp_beacon {
           # verify that this is a legitimate client by sending the "secure" query
           $udp->push_send("\\secure\\$secure\\final\\", $pa);
             
-            # log this as a new beacon
-            $self->log("secure", "challenged new beacon $peer_addr:$port with $secure.");
+          # log this as a new beacon (debug)
+          #$self->log("secure", "challenged new beacon $peer_addr:$port with $secure.");
           }
       }
       
@@ -91,7 +91,7 @@ sub process_udp_beacon {
     }
     # unknown game
     else {
-      $self->log("invalid","$peer_addr tries to identify as unknown game \"$r{gamename}\".");
+      $self->log("support","$peer_addr tries to identify as unknown game \"$r{gamename}\".");
     }
     
   }
@@ -100,13 +100,7 @@ sub process_udp_beacon {
   # be extrapolated from the heartbeat
   else {
     # log
-    $self->log("support", "received unknown beacon from $peer_addr --> $raw");
-    #
-    # TODO: more practical way to log this to the database: new table 
-    # named "unsupported" where messages are logged by ip, port, gamename (if 
-    # applicable) and TEXT raw message.
-    #
-    
+    $self->log("support", "received unknown beacon from $peer_addr --> '$raw'");
   }
 }
 
@@ -138,7 +132,7 @@ sub process_udp_validate {
   # was either removed by the BeaconChecker or cleaned out in maintenance (after X hours).
   if (defined $pending) {
     
-    #determine if it uses any enctype
+    # determine if it uses any enctype
     my $enc = (defined $r{enctype}) ? $r{enctype} : 0;
     
     # database may not contain the correct gamename (ucc applet, incomplete beacon, other game)
@@ -169,7 +163,7 @@ sub process_udp_validate {
         # remove the entry from pending if successfully added
         $self->remove_pending($pending->{id}) if ( $sa >= 0);
       }
-      # was not found, insert  clean and remove from pending
+      # was not found in serverlist, insert clean and remove from pending
       else {
         my $sa = $self->add_server_list(
            ip       => $pending->{ip}, 
@@ -183,37 +177,51 @@ sub process_udp_validate {
     else {
       # else failed validation
       # calculate expected result for log
-      my $validate_string = $self->validate_string(
-        gamename => $pending->{gamename}, 
-        secure => $pending->{secure}
+      
+      my $validate_string = "";
+      if ($pending->{gamename} && $pending->{secure}) {
+        $validate_string = $self->validate_string(
+          gamename => $pending->{gamename}, 
+          secure => $pending->{secure}
+        );
+      }
+      $self->log("secure","$pending->{id} for ". 
+                          ($pending->{gamename} || "empty_p_gamename")
+        ." sent: '".      ($pending->{secure}   || "empty_p_secure")
+        ."', expected '". ($validate_string     || "empty_v_string")
+        ."', got '".      ($r{validate}         || "empty_r_validate")
+        ."'"
       );
-      $self->log("secure","$pending->{id} for $pending->{gamename} sent: $pending->{secure}, got $r{validate}, expected $validate_string");
     }
   }
   # if no entry found in pending list
   else {
-    # 404 not found
-    $self->log("error","server not found in pending for $peer_addr:",
-      ($heartbeat ? $heartbeat : "" ), ($port ? $port : "" ), " !");
+    # not found
+    $self->log("error","server not found in pending for ".
+      ($peer_addr || "ip") .":".
+      ($heartbeat || "0")  .",".
+      ($port      || "0")  ." !");
   }
 }
 
 ################################################################################
 ## Process query data that was obtained with \basic\ and/or \info\ from the
 ## beacon checker module.
+## FIXME: error checking and data processing. ($_ || "default") instead.
 ################################################################################
 sub process_query_response {
   # $self, udp data, ip, port
   my ($self, $buf, $ip, $port) = @_;
 
-  #process datastream
-  my %s;
+  # process datastream
+  my %s = ();
   $buf = encode('UTF-8', $buf);
   $buf =~ s/\\([^\\]+)\\([^\\]+)/$s{$1}=$2/eg;
   
+  
+  
   # check whether the gamename is supported in our db
-  if (defined $s{gamename} && 
-      length $self->get_game_props($s{gamename})->{cipher} > 1) {
+  if (exists $s{gamename} && $self->get_game_props($s{gamename})) {
   
     # parse variables
     my %nfo = ();
@@ -224,19 +232,22 @@ sub process_query_response {
     # some mor0ns have hostnames longer than 200 characters
     $nfo{hostname} = substr $nfo{hostname}, 0, 199 if (length $nfo{hostname} >= 199);
     
-    # log results
-    $self->log("hostname", "$ip:$port is now known as $nfo{hostname}");
+    # log results (debug)
+    # $self->log("hostname", "$ip:$port is now known as $nfo{hostname}");
     
     # add or update in serverlist (assuming validation is complete)
-    $self->update_server_list(
+    my $result = $self->update_server_list(
         ip          => $ip, 
         port        => $port, 
         gamename    => $s{gamename},
         %nfo);
-        
+
     # if address is in pending list, remove it
     my $pen = $self->get_pending(ip => $ip, heartbeat => $port)->[0];
     $self->remove_pending($pen->{id}) if $pen;
+    
+    # log potential error
+    $self->log("support", "no entries were updated for $ip:$port ($s{gamename}), but it was still removed from pending!") if ($result == 0 && $pen);
   }
 }
 
@@ -248,7 +259,7 @@ sub process_status_response {
   # $self, udp data, ip, port
   my ($self, $buf, $ip, $port) = @_;
 
-  #process datastream
+  # process datastream
   my %s;
   $buf = encode('UTF-8', $buf);
   $buf =~ s/\\([^\\]+)\\([^\\]+)/$s{$1}=$2/eg;
@@ -312,16 +323,15 @@ sub process_status_response {
       # write to db
       $self->insert_utplayer($serverlist_id->{id}, %player);
     }
-    
-    #
-    # Prevent null concatenation in logging
-    $s{numplayers} ||= 0;
-    $s{maxplayers} ||= 0;
-    $s{mapname}    ||= "Unknown map";
-    $s{hostname}   ||= "Unknown hostname";
-    
-    # log results
-    $self->log("utserver", "$serverlist_id->{id}, $ip:$port,\t $s{numplayers}/$s{maxplayers} players, $s{mapname}, $s{hostname}");
+
+    # log results (debug)
+    #$self->log("utserver", 
+    #  "$serverlist_id->{id}, $ip:$port,\t".
+    #  ($s{numplayers} || "0") ."/".
+    #  ($s{maxplayers} || "0") ."players, ".
+    #  ($s{mapname}    || "mapname")  .",".
+    #  ($s{hostname}   || "hostname")
+    #);
   }
 }
 
@@ -351,28 +361,34 @@ sub process_ucc_applet_query {
         # count number of valid addresses
         $c++;
         
-        # print address
-        $self->log("add", "applet query added $ms->{game}\t$a\t$p");
+        # print address (debug)
+        # $self->log("add", "applet query added $ms->{gamename}\t$a\t$p");
         
         # add server
         $self->add_server_new(ip         => $a,
                               beaconport => $p,
                               heartbeat  => $p, 
-                              gamename   => $ms->{game}, 
+                              gamename   => $ms->{gamename}, 
                               secure     => $self->secure_string(),
                               updated    => time);
       }
       # invalid address, log
-      else {$self->log("error", "invalid address found at master applet $ms->{ip}: $l!");}
+      else {$self->log("error", "invalid address found at master applet $ms->{ip}, $l!");}
     }
   }
   
   # end transaction, commit        
   $self->{dbh}->commit;
+
+  # update time if successful applet query
+  $self->update_master_applet(
+    ip        => $ms->{ip},
+    port      => $ms->{port},
+    gamename  => $ms->{gamename}, 
+  ) if ($c > 0);
   
   # print findings
-  $self->log("applet-rx","found $c addresses at $ms->{ip} for $ms->{game}.");
-  
+  $self->log("applet-rx","found $c addresses at $ms->{ip} for $ms->{gamename}.");
 }
 
 1;

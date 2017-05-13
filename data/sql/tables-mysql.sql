@@ -1,8 +1,18 @@
+CREATE TABLE appletlist(
+  id              INTEGER          NOT NULL AUTO_INCREMENT,
+  ip              VARCHAR(15)      NOT NULL DEFAULT '0.0.0.0',
+  port            INTEGER          NOT NULL DEFAULT 0,
+  gamename        VARCHAR(50)      NOT NULL DEFAULT ' ',
+  added           timestamptz      NOT NULL DEFAULT NOW(),
+  updated         timestamptz      NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
 CREATE TABLE serverlist(
   id              INTEGER          NOT NULL AUTO_INCREMENT,
   ip              VARCHAR(15)      NOT NULL DEFAULT '0.0.0.0',
   port            INTEGER          NOT NULL DEFAULT 0,
-  gamename        VARCHAR(100)     NOT NULL DEFAULT ' ',
+  gamename        VARCHAR(50)      NOT NULL DEFAULT ' ',
   gamever         VARCHAR(50)      NOT NULL DEFAULT ' ',
   hostname        VARCHAR(100)     NOT NULL DEFAULT ' ',
   hostport        INTEGER          NOT NULL DEFAULT 0,

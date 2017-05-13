@@ -1,0 +1,30 @@
+AUTHOR
+  Darkelarious
+  http://333networks.com
+  darkelarious@333networks.com
+
+CHANGELOG
+
+2.3.0 - 13 May 2017
+  * maintaining a changelog
+  * added/changed configuration options
+    - db_dump (database dump interval)
+    - hex_format (removed, deprecated)
+    - master_applet (syntax changed, more arguments)
+  * revised uplinking method between 333networks-based masterservers
+  * load applet configuration into the database on startup
+  * load synchronization servers into the database on startup
+  * automatic masterserver selection for synchronization
+  * sharing of synchronization servers
+  * applet updating/deleting based on success rate
+  * scheduled database dumping/backup
+  * configurable time-outs for slow connections
+  * added experts tools in the repository for debugging
+  * reduce sync time with smarter database queries
+  * wide variety of bugfixes and code improvements
+
+2.2.5 - 19 Nov 2016
+  * Reference point for changelog
+  * improved error logging
+  * hotfix for missing gamenames
+  * restored SQLite3 support

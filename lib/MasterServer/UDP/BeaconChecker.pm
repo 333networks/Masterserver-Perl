@@ -1,4 +1,3 @@
-
 package MasterServer::UDP::BeaconChecker;
 
 use strict;
@@ -6,7 +5,7 @@ use warnings;
 use AnyEvent::Handle::UDP;
 use Exporter 'import';
 
-our @EXPORT = qw| query_udp_server|;
+our @EXPORT = qw| query_udp_server |;
 
 ################################################################################
 ## Get the server status from any server over UDP and store the received 
@@ -17,20 +16,28 @@ sub query_udp_server {
   my ($self, $id, $ip, $port, $secure, $message_type) = @_;
   my $buf = "";
   
-  # debug spamming
-  $self->log("udp", "Query server $id ($ip:$port)");
+  # debug logging
+  # $self->log("debug", "Query server $id ($ip:$port)");
   
   # connect with UDP server
   my $udp_client; $udp_client = AnyEvent::Handle::UDP->new(
-    # Bind to this host and port
     connect   => [$ip, $port],
-    timeout   => 1,
-    on_timeout => sub {$udp_client->destroy();}, # don't bother reporting timeouts
+    timeout   => $self->{timeout_time},
+    on_timeout => sub {$udp_client->destroy();}, # do not report timeouts
     on_error   => sub {$udp_client->destroy();}, # or errors
-    on_recv   => sub {
+    on_recv    => sub {
 
       # add packet to buffer
       $buf .= $_[0];
+
+      # FIXME: note to self: order is important when having combined queries!
+      # TODO:  find a more elegant and long-time solution for this.
+      
+      # message type 1: \basic\\secure\wookie
+      # if validate, assume that we sent a \basic\secure request.
+      if ($buf =~ m/\\validate\\/){
+        $self->process_udp_validate($buf, $ip, undef, $port);
+      }
       
       # message type 0: \basic\\info\
       # if gamename, ver, hostname and hostport are available, but NOT the value 
@@ -40,12 +47,6 @@ sub query_udp_server {
           $buf =~ m/\\hostport\\/ &&
           $buf !~ m/\\listenserver\\/ ) {
         $self->process_query_response($buf, $ip, $port);
-      }
-      
-      # message type 1: \basic\\secure\wookie
-      # if validate, assume that we sent a \basic\secure request.
-      if ($buf =~ m/\\validate\\/){
-        $self->process_udp_validate($buf, $ip, undef, $port);
       }
       
       # message type 2: \status\

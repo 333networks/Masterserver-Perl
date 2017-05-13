@@ -20,7 +20,6 @@ $MasterServer::OBJ->{$_}   = $S{$_} for (keys %S);
 
 # load MasterServer core libs
 MasterServer::load_recursive('MasterServer::Core', 
-                             'MasterServer::Database',
                              'MasterServer::UDP',
                              'MasterServer::TCP',
 			                       'MasterServer::Util');
