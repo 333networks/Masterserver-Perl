@@ -8,7 +8,6 @@ use Exporter 'import';
 
 our @EXPORT = qw| read_tcp_handle 
                   handle_validate 
-                  handle_about 
                   handle_list
                   handle_sync |;
 
@@ -45,9 +44,6 @@ sub read_tcp_handle {
   # part 2: receive \gamename\ut\location\0\validate\$validate\final\
   $val = $self->handle_validate(\%r, $h, $secure, $a, $p) 
     if (exists $r{validate} && !$val);
-
-  # about query
-  $response .= $self->handle_about($r{about}, $a, $p) if (exists $r{about});
   
   # return address list
   # part 3: wait for the requested action: \list\\gamename\ut\
@@ -65,7 +61,7 @@ sub read_tcp_handle {
   # improper syntax/protocol -- no valid commands found
   # respond with an error.
   # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-  if ("about sync validate list" =~ m/\Q$response\E/i) {
+  if ("sync validate list" =~ m/\Q$response\E/i) {
     
     # error message to client
     $c->push_write("\\echo\\333networks did not understand your request. ".
@@ -91,7 +87,7 @@ sub handle_validate {
   my $val = 0;
   
   # pass or fail the secure challenge
-  if (exists $r->{gamename} && $self->get_game_props($r->{gamename})) {
+  if (exists $r->{gamename} && $self->get_game_props(gamename => $r->{gamename})) {
 
     # game exists and we have the key to verify the response
     $val = $self->compare_challenge(
@@ -117,73 +113,9 @@ sub handle_validate {
   return $val;
 }
 
-
-################################################################################
-## \about\ query.
-## Can contain the values "contact", "build", "Address" or "support", where
-## - contact: return contact information; see config.pl
-## - build:   build info, also version.pm
-## - address: address and ports
-## - support: return a list of games currently in the database
-## - undef:   all of the above
-##
-## NOTE: client does not need to validate to be allowed to perform this
-## query.
-## TODO: deprecate about query -- info will now be in udp query!
-################################################################################
-sub handle_about {
-  my ($self, $about, $a, $p) = @_;
-  my $response = "";
-
-  # contact info
-  if ($about =~ /^contact$/i or $about =~ /^undef$/i) {
-    $response .= "\\about\\$self->{masterserver_hostname}, contact: $self->{masterserver_contact}";
-    $self->log("about","communicating to $a:$p my contact information.");
-  }
-    
-  # build/version info
-  if ($about =~ /^build$/i or $about =~ /^version$/i or $about =~ /^undef$/i) {
-    $response .= "\\build\\$self->{build_type} $self->{build_version} written "
-              .  "by $self->{build_author}, released $self->{build_date}";
-    $self->log("about","telling $a:$p my build info.");
-  }
-  
-  # address info
-  if ($about =~ /^address$/i or $about =~ /^undef$/i) {
-    $response .= "\\address\\$self->{masterserver_address}"
-              .  "\\listen_port\\$self->{listen_port}"
-              .  "\\beacon_port\\$self->{beacon_port}";
-    $self->log("about","telling $a:$p my address/config info.");
-  }
-    
-  # support info
-  if ($about =~ /^support$/i or $about =~ /^undef$/i) {
-    # string games in database
-    my $sg = $self->get_gamenames();
-    my $sgs = "";
-    for (@{$sg}) {
-      $sgs .= " " if (length $sgs > 0);
-      $sgs .= $_->[0];
-    }
-    $response .= "\\support\\$sgs";
-    $self->log("about","telling $a:$p which games are supported.");
-  }
-
-  # unsupported query
-    if ("contact build address support version undef" !~ m/$about/i) {
-    $response .= "\\echo\\incorrect query usage, supported queries are: contact build version address support.";
-    $self->log("about","incorrect query \"$about\", telling $a:$p the supported \"about\" queries.");
-  }
-  
-  # return response string
-  return $response;
-}
-
 ################################################################################
 ## At this point, the client should be validated and ready to request with
 ## the \secure\ command and is allowed to ask for the list.
-## The \list\ cmd is NOT compatible with combined queries 
-## (like \about\contact\list\)
 ################################################################################
 sub handle_list {
   my ($self, $val, $r, $c, $a, $p) = @_;

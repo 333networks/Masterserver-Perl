@@ -98,7 +98,7 @@ sub compile_sync {
   for my $g (keys %games) {
 
     # $g is now a gamename -- check if it's supported. Else ignore.
-    if ($self->get_game_props($g)) {
+    if ($self->get_game_props(gamename => $g)) {
       
       # get list from database
       my $list = $self->get_server(

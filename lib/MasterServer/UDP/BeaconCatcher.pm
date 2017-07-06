@@ -65,8 +65,13 @@ sub on_beacon_receive {
     if ($b =~ m/\\heartbeat\\/ && $b =~ m/\\gamename\\/);
   
   # if other masterservers check if we're still alive
-  $self->process_udp_secure($udp, $pa, $b, $peer_addr) 
-    if ($b =~ m/\\secure\\/ || $b =~ m/\\basic\\/ || $b =~ m/\\status\\/ || $b =~ m/\\info\\/);
+  $self->handle_status_query($udp, $pa, $b, $peer_addr) 
+    if ($b =~ m/\\secure\\/ || 
+        $b =~ m/\\basic\\/  || 
+        $b =~ m/\\info\\/   || 
+        $b =~ m/\\rules\\/  ||
+        $b =~ m/\\players\\/|| 
+        $b =~ m/\\status\\/);
 }
 
 1;

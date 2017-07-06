@@ -7,7 +7,8 @@ use Exporter 'import';
 our @EXPORT = qw| check_cipher_count
                   clear_ciphers 
                   insert_cipher 
-                  get_game_props |;
+                  get_game_props 
+                  get_gamenames |;
 
 ################################################################################
 ## Check if ciphers exist
@@ -51,13 +52,56 @@ sub insert_cipher {
 
 ################################################################################
 ## get the cipher, description and default port that goes with given gamename
-## returns only the first item if multiple items
+## 
 ################################################################################
 sub get_game_props {
-  my ($self, $gn) = @_;
+  my $s = shift;
+  my %o = (
+    sort => '', 
+    @_
+  );
   
-  # get cipher from db if gamename exists
-  return $self->db_all('SELECT * FROM games WHERE gamename = ?', lc $gn)->[0];
+  my %where = (
+    $o{gamename}      ? ('gamename = ?'       => lc $o{gamename})   : (),
+    $o{cipher}        ? ('cipher = ?'         => $o{cipher})        : (),
+    $o{description}   ? ('description = ?'    => $o{description})   : (),
+    $o{default_qport} ? ('default_qport = ?'  => $o{default_qport}) : (),
+    $o{num_uplink}    ? ('num_uplink = ?'     => $o{num_uplink})    : (),
+    $o{num_total}     ? ('num_total = ?'      => $o{num_total})     : (),
+    $o{num_gt}        ? ('num_total >= ?'     => $o{num_gt})        : (),
+  );
+  
+  my @select = ( qw| gamename cipher description default_qport num_uplink num_total|,);
+  my $order = sprintf {
+      gamename      => 'gamename %s',
+      cipher        => 'cipher %s',
+      description   => 'description %s',
+      default_qport => 'default_qport %s',
+      num_uplink    => 'num_uplink %s',
+      num_total     => 'num_total %s',
+  }->{ $o{sort}||'gamename' }, $o{reverse} ? 'DESC' : 'ASC';
+
+  return $s->db_all( q|
+    SELECT !s FROM games
+      !W
+      ORDER BY !s|
+      .($o{limit} ? " LIMIT ?" : ""),
+    join(', ', @select), \%where, $order, ($o{limit} ? $o{limit} : ()),
+  );
+}
+
+
+################################################################################
+## get a list of distinct gamenames currently in the database. it does not 
+## matter whether they are recent or old, as long as the game is currently in
+## the database.
+################################################################################
+sub get_gamenames {
+  my $self = shift;
+
+  return $self->{dbh}->selectall_arrayref(
+     "SELECT distinct gamename 
+      FROM serverlist");
 }
 
 1;

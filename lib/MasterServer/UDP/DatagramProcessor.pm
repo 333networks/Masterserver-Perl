@@ -34,13 +34,13 @@ sub process_udp_beacon {
     $self->log("beacon", "$peer_addr:$r{heartbeat} for $r{gamename}");
     
     # check if game is actually supported in our db
-    my $game_props = $self->get_game_props($r{gamename});
+    my $game_props = $self->get_game_props(gamename => $r{gamename})->[0];
     
     # if no entry exists, report error.
     if (defined $game_props) {
       
       # validate heartbeat data
-      my $heartbeat = ($r{heartbeat} || $game_props->{default_qport});
+      my $heartbeat = ($r{heartbeat} || ($game_props->{default_qport} || 0));
       
       #
       # verify valid server address (ip+port)
@@ -140,7 +140,7 @@ sub process_udp_validate {
 
     # verify challenge
     my $val = $self->compare_challenge(
-                gamename => $pending->{gamename},
+                gamename => lc $pending->{gamename},
                 secure   => $pending->{secure},
                 enctype  => $r{enctype},
                 validate => $r{validate},
@@ -221,7 +221,7 @@ sub process_query_response {
   
   
   # check whether the gamename is supported in our db
-  if (exists $s{gamename} && $self->get_game_props($s{gamename})) {
+  if (exists $s{gamename} && $self->get_game_props(gamename => $s{gamename})) {
   
     # parse variables
     my %nfo = ();

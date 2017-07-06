@@ -5,8 +5,7 @@ use warnings;
 use Exporter 'import';
 
 our @EXPORT = qw| get_server 
-                  get_pending 
-                  get_gamenames |;
+                  get_pending |;
 
 ################################################################################
 ## get server details for one or multiple servers
@@ -121,19 +120,6 @@ sub get_pending {
       .($o{limit} ? " LIMIT ?" : ""),
     join(', ', @select), \%where, $order, ($o{limit} ? $o{limit} : ()),
   );
-}
-
-################################################################################
-## get a list of distinct gamenames currently in the database. it does not 
-## matter whether they are recent or old, as long as the game is currently in
-## the database.
-################################################################################
-sub get_gamenames {
-  my $self = shift;
-
-  return $self->{dbh}->selectall_arrayref(
-     "SELECT distinct gamename 
-      FROM serverlist");
 }
 
 1;

@@ -5,6 +5,13 @@ AUTHOR
 
 CHANGELOG
 
+2.3.1 - 6 Jul 2017
+  * support for status query ()
+  * support for about query DEPRECATED!
+  * rewriting some functions with less code and/or variables
+  * abstracted selecting game properties with db function
+  * small bug fixes (lowercase gamenames)
+
 2.3.0 - 13 May 2017
   * maintaining a changelog
   * added/changed configuration options

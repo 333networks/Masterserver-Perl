@@ -39,7 +39,6 @@ sub load_ciphers {
     
     # insert the game/cipher in the db or halt on error
     if ($self->insert_cipher(%opt) < 0) {
-      # failure causes a fatal error and exits
       $self->{dbh}->rollback;
       $self->halt();
     }
@@ -52,15 +51,12 @@ sub load_ciphers {
 
 ################################################################################
 # generate a random string of 6 characters long for the \secure\ challenge
-# returns string
+# returns a random string, only uppercase characters
 ################################################################################
 sub secure_string {
-  # generate a random string, only uppercase characters
   my @c = ('A'..'Z');
   my $s = "";
   $s .= $c[rand @c] for 1..6;
-  
-  # return random string
   return $s;
 }
 
@@ -73,28 +69,22 @@ sub compare_challenge {
   
   # debugging enabled? Then don't care about validation
   return 1 if ($self->{debug_validate});
-  
-  # secure string too long? (because vulnerable in UE)
-  return 0 if (length $o{secure} > 16);
-  
+
   # ignore this game if asked to do so
   if ($self->{ignore_browser_key} =~ m/$o{gamename}/i){
     $self->log("ignore", "ignored beacon validation for $o{gamename}");
     return 1;
   } 
 
-  # enctype given?
-  $o{enctype} = 0 unless $o{enctype};  
-
   # calculate validate string
   my $val = get_validate_string(
-    $self->get_game_props($o{gamename})->{cipher},
+    $self->get_game_props(gamename => $o{gamename})->[0]->{cipher},
     $o{secure},
-    $o{enctype}
+    $o{enctype} || 0
   );
 
-  # return whether or not they match
-  return ($val eq $o{validate});
+  # return match or no match
+  return ($val eq ($o{validate} || ""));
 }
 
 ################################################################################
@@ -103,17 +93,15 @@ sub compare_challenge {
 sub validate_string {
   my ($self, %o) = @_;
   
-  # secure string too long? (because vulnerable in UE)
-  return 0 if (length $o{secure} > 16);
-  
-  # get cipher from gamename
-  my $cip = $self->get_game_props(lc $o{gamename})->{cipher};
-  
-  # enctype given?
-  $o{enctype} = 0 unless $o{enctype};  
-  
+  # secure string too long? discard as hack.
+  return 0 if (length $o{secure} > 6);
+
   # calculate and return validate string
-  return get_validate_string($cip, $o{secure}, $o{enctype});
+  return get_validate_string(
+    $self->get_game_props(gamename => $o{gamename})->[0]->{cipher}, 
+    $o{secure}, 
+    $o{enctype} || 0
+  );
 }
 
 ################################################################################
