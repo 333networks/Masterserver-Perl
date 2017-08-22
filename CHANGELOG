@@ -4,6 +4,28 @@ AUTHOR
   darkelarious@333networks.com
 
 CHANGELOG
+2.4.0 - 22 Aug 2017
+  * fundamental changes in behaviour
+  * no longer authenticate on the uplink port, but query port
+  * request status information from servers instead of info and/or basic
+  * merge similar functions to reduce the amount of duplicate code
+  * parse datagrams with split, which allows undefined values
+  * new servers must always authenticate on the first beacon
+  * particular games can be allowed to have incorrect authentication responses
+  * games that do not support secure/validate authentication may be skipped
+  * redundant option "require_secure_beacons" removed from config
+  * mandatory fields for contact information must always exist
+  * minimal feedback on failure to authenticate (clients)
+  * new database tables (clean install required)
+  * adding multiple indexes to speed up database queries
+  * split up calculating game statistics in separate queries
+  * no longer check servers after being unresponsive for more than 1 hour
+  * pending servers are cleaned out after 1 hour if not responsive
+  * pending servers have no information stored other than ip, port
+  * servers that were offline too long are now updated through pending
+  * renamed feedback/log messages to reduce the amount of types
+  * colors in terminal output ^_^
+  * new utility: UDP browser host (for Postal 2 COop)
 
 2.3.1 - 6 Jul 2017
   * support for status query ()

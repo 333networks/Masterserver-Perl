@@ -5,9 +5,8 @@ use warnings;
 use Switch;
 use POSIX qw/strftime/;
 use Exporter 'import';
-$|++;
-
 our @EXPORT = qw| log error |;
+$|++;
 
 ################################################################################
 ## Split up errors in multiple log types for suppressing
@@ -16,33 +15,18 @@ our @EXPORT = qw| log error |;
 sub error {
   my ($self, $error, $instigator) = @_;
   
-  # which error?
+  # which one?
   switch ($error) {
-  
     # connection timed out
-    case m/Connection timed out/i {
-        $self->log("timeout", "on $instigator.");
-      }
-    
+    case m/Connection timed out/i {$self->log("timeout", "on $instigator.");}
     # connection reset by peer
-    case m/Connection reset by peer/i {
-        $self->log("reset", "on $instigator.");
-      }
-    
+    case m/Connection reset by peer/i {$self->log("reset", "on $instigator.");}
     # connection refused
-    case m/Connection refused/i {
-        $self->log("refused", "on $instigator.");
-      }
-    
+    case m/Connection refused/i {$self->log("refused", "on $instigator.");}
     # no such device or address
-    case m/No such device or address/i {
-        $self->log("nodevice", "on $instigator.");
-      }
-    
+    case m/No such device or address/i {$self->log("nodevice", "on $instigator.");}
     # if all else fails
-    else {
-        $self->log("error", "$error on $instigator.");
-    }
+    else {$self->log("error", "$error on $instigator.");}
   }
 }
 
@@ -54,7 +38,8 @@ sub log {
   my ($self, $type, $msg) = @_;
 
   # is the message suppressed in config?
-  return if (defined $type && $self->{suppress} =~ m/$type/i);
+  return if ($self->{suppress} =~ m/$type/i);
+  $type = "unknown" unless $type;
 
   # parse time of log entry and prep for rotating log
   my $time    = strftime('%Y-%m-%d %H:%M:%S',localtime);
@@ -71,11 +56,8 @@ sub log {
   
   # put log filename together
   my $logfile = $self->{log_dir}.((substr($self->{log_dir},-1) eq "/")?"":"/").$f;
-
-  # print to stdout if enabled
-  print "[$time]\t[$type]\t$msg\n" if $self->{printlog};
   
-  # temporarily disable the warnings-to-log, to avoid infinite recursion if
+  # temporarily disable the warnings-to-log, to avoid recursion if 
   # this function throws a warning.
   my $old = $SIG{__WARN__};
   $SIG{__WARN__} = undef;
@@ -90,6 +72,19 @@ sub log {
     close $F;
   }
   $SIG{__WARN__} = $old;
+  
+  # color codes for fancy terminal output (not to file)
+  $type = "\e[1m\e[91m$type\e[0m" if ($type =~ m/(fatal|fail|error|stop)/i);# bold red
+  $type = "\e[91m$type\e[0m" if ($type =~ m/(refused|nodevice|timeout)/i);  # red
+  $type = "\e[93m$type\e[0m" if ($type =~ m/(reset|warning|secure|unset)/i);# yellow
+  $type = "\e[95m$type\e[0m" if ($type =~ m/(add|update|delete)/i);         # magenta
+  $type = "\e[96m$type\e[0m" if ($type =~ m/(list|uplink)/i);               # cyan
+  $type = "\e[94m$type\e[0m" if ($type =~ m/(beacon|syncer)/i);             # blue
+  $type = "\e[92m$type\e[0m" if ($type =~ m/(stat|kfnew)/i);                # green
+  $type = "\e[1m\e[92m$type\e[0m" if ($type =~ m/(info|debug)/i);           # bold green
+
+  # print to stdout if enabled
+  print "[$time]\t[$type]\t$msg\n" if $self->{printlog};
 }
 
 1;

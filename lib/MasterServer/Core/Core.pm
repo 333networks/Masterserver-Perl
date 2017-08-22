@@ -5,32 +5,20 @@ use warnings;
 use AnyEvent;
 use Exporter 'import';
 use DBI;
-$|++;
-
 our @EXPORT = qw | halt select_database_type main |;
 
 ################################################################################
 ## Handle shutting down the program in case a fatal error occurs.
+## clear all other timers, network servers, etc
 ################################################################################
 sub halt {
   my $self = shift;
-  
-  # log shutdown
-  $self->log("stop", "Stopping the masterserver.");
-  
-  # clear all other timers, network servers, etc
+  $self->log("stop", "stopping the masterserver!");
   $self->{dbh}->disconnect() if (defined $self->{dbh});
   $self->{dbh}   = undef;
   $self->{scope} = undef;
-  
-  # and send signal to condition var to let the loops end
   $self->{must_halt}->send;
-  
-  # log halt  
-  $self->log("stop", "Shutting down NOW!");
-  
-  # time for a beer.  
-  exit;
+  exit; # time for a beer.  
 }
 
 ################################################################################
@@ -39,28 +27,17 @@ sub halt {
 ################################################################################
 sub select_database_type {
   my $self = shift;
- 
-  # read from login
-  my @db_type = split(':', $self->{dblogin}->[0]);
+  my @db_type = split(':', $self->{dblogin}->[0]); # from config file
 
   # format supported?
   if ( "Pg SQLite mysql" =~ m/$db_type[1]/i) {
-    
-    # inform us what DB we try to load
-    $self->log("debug","Loading $db_type[1] database module.");
-  
-    # load dbd and tables/queries for this db type
+    # load database for this type
     MasterServer::load_recursive("MasterServer::Database::$db_type[1]");
-    
-    # Connect to database
     $self->{dbh} = $self->database_login();
-    
-    # and test whether we succeeded.
     $self->halt() unless (defined $self->{dbh});
   }
-  else {
-    # raise error and halt
-    $self->log("fatal", "The masterserver could not determine the chosen database type.");
+  else { # we can not continue without database
+    $self->log("fatal", "the masterserver could not determine the chosen database type");
     $self->halt();
   }
 }
@@ -70,88 +47,47 @@ sub select_database_type {
 ################################################################################
 sub main {
   my $self = shift;
-  
-  # condition var prevents or allows the program from ending
   $self->{must_halt} = AnyEvent->condvar;
-  
-  # load version info
   $self->version();
   
-  # print startup
+  # startup
   print "Running 333networks Master Server Application...\n";
-  
-  # keep several objects alive outside their original scope
-  $self->{scope} = ();
-  
-  # startup procedure information
-  $self->log("info", "");
-  $self->log("info", "");
   $self->log("info", "333networks Master Server Application.");
-  $self->log("info", "Hostname: $self->{masterserver_hostname}");
-  $self->log("info", "Build:    $self->{build_type}");
-  $self->log("info", "Version:  $self->{build_version}");
-  $self->log("info", "Author:   $self->{build_author}");
-  $self->log("info", "Logs:     $self->{log_dir}");
+  $self->log("info", "hostname: $self->{masterserver_hostname}");
+  $self->log("info", "build:    $self->{build_type}");
+  $self->log("info", "version:  $self->{build_version}");
+  $self->log("info", "author:   $self->{build_author}");
+  $self->log("info", "logs:     $self->{log_dir}");
   
-  # determine the type of database and load the appropriate module
+  # load database and set up scope for timers/network
   $self->select_database_type();
-  
-  ###
-  #
-  # execute necessary tasks for running the masterserver
-  #
-  ###
-  
+  $self->{scope} = ();  
+
   # load the list with ciphers from the config file if no ciphers were detected
-  # update manually with util/tools/db_load_ciphers.pl
-  # then unload the game variables from masterserver memory
   $self->load_ciphers() unless $self->check_cipher_count();
   $self->{game} = undef;
   
-  # (re)load the list with masterservers and master applets from config
-  # does not clear out old entries, but resets "last_updated" to now
+  # reload the list with masterservers and master applets from config
   $self->load_sync_masters();
   $self->load_applet_masters();
   
-  # set first run flag to avoid ignoring/deleting servers after downtime
+  # first run flag for all startup actions
   $self->{firstrun} = undef;
   $self->{firstruntime} = time;
 
-  ###  
-  #
-  # activate all schedulers and functions
-  #
-  ###
-  
-  #
-  # Timers
-  #
-  # tasks that are executed once or twice per hour
-  $self->{scope}->{long_periodic_tasks} = $self->long_periodic_tasks();
-  #
-  # tasks that are executed every few minutes
-  $self->{scope}->{short_periodic_tasks} = $self->short_periodic_tasks();
-  #
-  # tasks that are executed every few milliseconds
-  $self->{scope}->{udp_ticker} = $self->udp_ticker();
-  
-  #
-  # Network listeners
-  #
-  # start the listening service (listen for UDP beacons)
+  # beacons and serverlists (listen for UDP beacons / TCP requests)
   $self->{scope}->{beacon_catcher} = $self->beacon_catcher();
-  #
-  # provide server lists to clients with the browser host server
   $self->{scope}->{browser_host} = $self->browser_host();
-  
-  ###
-  #
+
+  # recurring tasks (sync and updates)
+  $self->{scope}->{long_periodic_tasks} = $self->long_periodic_tasks();
+  $self->{scope}->{short_periodic_tasks} = $self->short_periodic_tasks();
+
+  # verify and update server status
+  $self->{scope}->{udp_ticker} = $self->udp_ticker() if $self->{beacon_checker_enabled};
+
   # all modules loaded. Running...
-  #
-  ###
-  $self->log("info", "All modules loaded. Masterserver is now running.");
-  
-  # prevent main program from ending as long as no fatal errors occur
+  $self->log("info", "all modules loaded. Masterserver is now running!");
   $self->{must_halt}->recv;
 }
 

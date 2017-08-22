@@ -2,12 +2,28 @@ package MasterServer::Core::Util;
 
 use strict;
 use warnings;
-use IP::Country::Fast;
 use Socket;
+use Encode;
+use IP::Country::Fast;
 use POSIX qw/strftime/;
 use Exporter 'import';
+our @EXPORT = qw| data2hashref 
+                  ip2country 
+                  host2ip 
+                  valid_address 
+                  db_all 
+                  sqlprint |;
 
-our @EXPORT = qw| ip2country host2ip valid_address db_all sqlprint |;
+################################################################################
+## process udp/tcp data strings from \key\value to hash
+################################################################################
+sub data2hashref {
+  my ($self, $str) = @_;
+  my @a = split /\\/, encode('UTF-8', $str||"");
+  shift @a;
+  my %h = (@a, (scalar @a % 2 == 1) ? "dummy" : () );
+  return \%h;
+}
 
 ################################################################################
 ## return the abbreviated country name based on IP

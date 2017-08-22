@@ -1,7 +1,7 @@
 package MasterServer;
 
 #
-# Last update: Sat 13 May 2017 13:37 GMT+1
+# Last update: 22 Aug 2017
 #
 
 our (%S, $ROOT);
@@ -24,8 +24,9 @@ our %S = (
   masterserver_hostname => "master.333networks.com (333networks MasterServer Template)",
   
   # contact details (shows in TCP requests directly from master to master)
-  masterserver_contact  => 'Darkelarious -- info@333networks.com',
-  masterserver_address  => 'master.333networks.com',
+  masterserver_name     => 'Your Name Here',
+  masterserver_contact  => 'info@example.com',
+  masterserver_address  => 'master.example.com',
   
 ################################################################################
 # Database Login Configuration                                                 #
@@ -73,8 +74,15 @@ our %S = (
   # show only important events
   suppress => "debug beacon uplink secure tcp add update delete",
   
-  # more keywords that can be suppressed: 
-  # applet-rx error info kfstat stat sync-rx sync-tx list ignore dump support
+  # keywords that can be suppressed (from high to low severity): 
+  #   fatal fail error stop
+  #   refused nodevice timeout
+  #   reset warning secure unset
+  #   add update delete
+  #   list uplink
+  #   beacon syncer
+  #   stat kfnew
+  #   info debug
   
 ################################################################################
 # Network settings                                                             #
@@ -108,6 +116,9 @@ our %S = (
   # ignore keys from games that use multiple keys or do not support keys at all
   ignore_beacon_key   => "deusex ut wot rune",
   ignore_browser_key  => "deusex",
+  
+  # some games do not even support the "secure" and "validate" values. Bypass.
+  secure_unsupported  => "tribesv",
 
 ################################################################################
 # Enable settings                                                              #
@@ -122,16 +133,11 @@ our %S = (
   # Synchronization with other 333networks-based masterservers
   sync_enabled  => 1,
 
-  # Beacon Checker query all addresses in the database, requesting "basic" and 
-  # "info". Execute at least twice per hour, to avoid time-outs in own data.
+  # Beacon Checker 
+  # getting server status info from \all\ servers. executed every 15 minutes to
+  # keep information up to date. 
   # disabling breaks support for certain games [like tribesv].
   beacon_checker_enabled  => 1,
-
-  # Collect server information for the 333networks main site. Identical
-  # mechanism as the Beacon Checker. Is used for by 333networks to show
-  # Unreal Tournament information on the site.
-  # NB: with some work it can be adapted to work with any other game. Own risk.
-  utserver_query_enabled  => 0,
 
 ################################################################################
 # Synchronization settings                                                     #
@@ -181,7 +187,7 @@ our %S = (
   # Collect kfstats info
   kfstats_enabled  => 0,
 
-  #kfstats.ini file location
+  # kfstats.ini file location
   kfstats_file =>  "/UT2004/System/KFStats.ini",
   
 ); #end configuration %S

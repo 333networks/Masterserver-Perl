@@ -3,7 +3,6 @@ package MasterServer::Database::Pg::dbAppletActions;
 use strict;
 use warnings;
 use Exporter 'import';
-
 our @EXPORT = qw|  add_master_applet 
                 update_master_applet 
                  reset_master_applets 
@@ -18,19 +17,20 @@ sub add_master_applet {
   my %o = @_;
 
   my $u = $self->{dbh}->do(
-     "SELECT * FROM appletlist 
-      WHERE ip = ? 
-      AND port = ?
+    "SELECT * FROM appletlist 
+     WHERE     ip = ? 
+      AND hostport = ?
       AND gamename = ?",
-      undef, $o{ip}, $o{port}, lc $o{gamename});
+    undef, $o{ip}, $o{hostport}, lc $o{gamename});
   
   # return if found
   return if ($u > 0);
 
   # insert applet data 
-  return $self->{dbh}->do("INSERT INTO appletlist (ip, port, gamename) 
-                           SELECT ?, ?, ?", undef, 
-                           $o{ip}, $o{port}, lc $o{gamename});
+  return $self->{dbh}->do(
+  "INSERT INTO appletlist (ip, hostport, gamename) 
+   SELECT ?, ?, ?", 
+  undef, $o{ip}, $o{hostport}, lc $o{gamename});
 }
 
 ################################################################################
@@ -38,10 +38,11 @@ sub add_master_applet {
 ################################################################################
 sub reset_master_applets {
   my $self = shift;
-  return $self->{dbh}->do("UPDATE appletlist 
-    SET   added = to_timestamp(?),
-        updated = to_timestamp(?)",
-    undef, time, time);
+  return $self->{dbh}->do(
+   "UPDATE appletlist 
+     SET added = to_timestamp(?),
+       updated = to_timestamp(?)",
+   undef, time, time);
 }
 
 ################################################################################
@@ -50,12 +51,13 @@ sub reset_master_applets {
 sub update_master_applet {
   my ($self, %o) = @_;
 
-  return $self->{dbh}->do("UPDATE appletlist 
-    SET updated = to_timestamp(?) 
-    WHERE ip = ?
-      AND port = ?
+  return $self->{dbh}->do(
+    "UPDATE appletlist 
+     SET updated = to_timestamp(?) 
+     WHERE       ip = ?
+      AND hostport = ?
       AND gamename = ?", 
-    undef, time, $o{ip}, $o{port}, lc $o{gamename});
+    undef, time, $o{ip}, $o{hostport}, lc $o{gamename});
 }
 
 ################################################################################
@@ -66,10 +68,10 @@ sub get_masterserver_applets {
   my $self = shift;
 
   return $self->db_all(
-     "SELECT * 
-      FROM appletlist
-      WHERE updated > to_timestamp(?)",
-      time-604800);
+    "SELECT * 
+     FROM appletlist
+     WHERE updated > to_timestamp(?)",
+    time-604800);
 }
 
 ################################################################################
@@ -82,11 +84,12 @@ sub remove_unresponsive_applets {
 
   # remove entries
   my $u = $self->{dbh}->do(
-     "DELETE FROM appletlist 
-      WHERE updated < to_timestamp(?)", undef, time-604800);
+  "DELETE FROM appletlist 
+   WHERE updated < to_timestamp(?)", 
+  undef, time-604800);
   
   # notify 
-  $self->log("delete", "Removed $u entries from applet list.") if ($u > 0);
+  $self->log("delete", "Removed $u entries from applet list") if ($u > 0);
 }
 
 1;

@@ -1,15 +1,15 @@
 =========
 
 DESCRIPTION
+  
+  This repository contains software to host a MasterServer for a variety of 
+  legacy games. The software was written Darkelarious to soften the effects of 
+  GameSpy (GameSpy Industries, Inc.) shutting down their masterserver service.
 
   A masterserver is a program that maintains a list of online game servers and 
   presents this list to clients (gamers, players) who request the list of game 
   addresses. The 333networks Masterserver is a software framework that allows 
   gamers/players to browse online games.
-
-  This repository contains the source code which was written by Darkelarious to
-  soften the effects of GameSpy (GameSpy Industries, Inc.) shutting down their 
-  services. Among this service was a so-called "masterserver".
   
   More information about the masterserver and variations on the protocol by
   333networks can be found online at 
@@ -27,11 +27,14 @@ REQUIREMENTS
   - Postgresql, MySQL or SQLite3
   - Perl 5.10 or above
   - The following CPAN modules:
-      DBI
-      DBD::Pg / DBD::SQLite / DBD::mysql
       AnyEvent
       AnyEvent::Handle::UDP
+      DBI
+      DBD::Pg / DBD::SQLite / DBD::mysql
+      Encode
+      Exporter
       IP::Country::Fast
+      Socket
       Switch
       JSON
   - screen (or another terminal multiplexer, optional)
@@ -39,7 +42,7 @@ REQUIREMENTS
 INSTALL
 
   THE MASTER SERVER IS WRITTEN ON LINUX. IF YOU WANT TO RUN THE SOFTWARE IN 
-  MICROSOFT WINDOWS OR APPLE OSX, IT MAY NOT WORK WITHOUT MODIFICATIONS.
+  MICROSOFT WINDOWS OR APPLE OSX, IT WILL NOT WORK WITHOUT MODIFICATIONS.
   
   Download the masterserver files from our GIT repository (or zip) and extract
   them to your favorite server directory.
@@ -260,7 +263,7 @@ KNOWN ISSUES
   Some other masterserver interfaces may show different statistics than your
   own masterserver. This may have multiple reasons: servers could have gone
   offline before your masterserver established whether these addresses were 
-  online; servers may have missed the bi-hourly update moment and show offline,
+  online; servers may have missed the update moment and show offline,
   but may get updated in the next cycle; servers send beacons to the other
   masterserver directly, but have incorrect firewall settings that prevent them
   from being checked after synchronization. These factors can not be compensated
@@ -272,9 +275,9 @@ KNOWN ISSUES
   for 333networks and affiliated servers do not suffer from this problem.
 
   No servers found after syncing with 333networks or others: the syncing 
-  protocol also requires authentication. We do not want authorized people mass-
-  spamming our (or other's) masterservers with unnecessarily fast sync request.
-  If you want to sync with us, please email us on info@333networks.com
+  protocol also requires authentication. We do not want people mass-spamming 
+  our (or other's) masterservers with unnecessarily fast sync request. If you 
+  want to sync with us, please email us on info@333networks.com
 
 COPYING
 

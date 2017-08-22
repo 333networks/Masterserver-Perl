@@ -3,19 +3,17 @@ package MasterServer::Database::Pg::dbCiphers;
 use strict;
 use warnings;
 use Exporter 'import';
-
 our @EXPORT = qw| check_cipher_count
                   clear_ciphers 
                   insert_cipher 
-                  get_game_props 
-                  get_gamenames |;
+                  get_game_props |;
 
 ################################################################################
 ## Check if ciphers exist
 ################################################################################
 sub check_cipher_count {
   my $self = shift;
-  return $self->db_all('SELECT count(*) as num from games')->[0]->{num};
+  return $self->db_all('SELECT count(gamename) as num from games')->[0]->{num};
 }
 
 ################################################################################
@@ -23,9 +21,7 @@ sub check_cipher_count {
 ################################################################################
 sub clear_ciphers {
   my $self = shift;
-
-  # delete ALL entries
-  my $u = $self->{dbh}->do("DELETE FROM games");
+  $self->{dbh}->do("DELETE FROM games");
 }
 
 ################################################################################
@@ -56,10 +52,7 @@ sub insert_cipher {
 ################################################################################
 sub get_game_props {
   my $s = shift;
-  my %o = (
-    sort => '', 
-    @_
-  );
+  my %o = (sort => '', @_);
   
   my %where = (
     $o{gamename}      ? ('gamename = ?'       => lc $o{gamename})   : (),
@@ -88,20 +81,6 @@ sub get_game_props {
       .($o{limit} ? " LIMIT ?" : ""),
     join(', ', @select), \%where, $order, ($o{limit} ? $o{limit} : ()),
   );
-}
-
-
-################################################################################
-## get a list of distinct gamenames currently in the database. it does not 
-## matter whether they are recent or old, as long as the game is currently in
-## the database.
-################################################################################
-sub get_gamenames {
-  my $self = shift;
-
-  return $self->{dbh}->selectall_arrayref(
-     "SELECT distinct gamename 
-      FROM serverlist");
 }
 
 1;

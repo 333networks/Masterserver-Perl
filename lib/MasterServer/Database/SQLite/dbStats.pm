@@ -3,24 +3,61 @@ package MasterServer::Database::SQLite::dbStats;
 use strict;
 use warnings;
 use Exporter 'import';
-
-our @EXPORT = qw| get_gamelist_stats 
-                  write_direct_beacons
+our @EXPORT = qw| get_gamenames
+                  get_gamestats
+                  get_listedstats
                   write_stat 
+                  write_direct_beacons
                   write_kfstats |;
 
 ################################################################################
-# calculate stats for all individual games
+## get a list of distinct gamenames currently in the server list
 ################################################################################
-sub get_gamelist_stats {
+sub get_gamenames {
   my $self = shift;
-
   return $self->{dbh}->selectall_arrayref(
-     "SELECT DISTINCT gamename AS gamename, 
-            COUNT(NULLIF(b333ms AND updated > datetime(?, 'unixepoch'), 0)) AS numdirect,
-            COUNT(NULLIF(updated > datetime(?, 'unixepoch'), 0)) AS numtotal
-     FROM serverlist 
-     GROUP BY gamename", undef, time-7200, time-7200);
+     "SELECT distinct gamename 
+      FROM serverlist");
+}
+
+################################################################################
+## get statistics (num_direct, num_total) per gamename
+################################################################################
+sub get_gamestats {
+  my ($self, $gn) = @_;
+  return $self->db_all(
+     "SELECT COUNT(CASE WHEN b333ms THEN 1 END) as num_uplink, count(*) as num_total
+      FROM serverlist
+      WHERE gamename = ? AND updated > datetime(?, \'unixepoch\')",
+      lc $gn, time-7200);
+}
+
+################################################################################
+## get a list of distinct gamenames currently in the database. it does not 
+## matter whether they are recent or old, as long as the game is currently in
+## the database.
+################################################################################
+sub get_listedstats {
+  my $self = shift;
+  return $self->{dbh}->selectall_arrayref(
+     "SELECT gamename 
+      FROM games
+      WHERE num_uplink > 0
+         OR num_total  > 0");
+}
+
+################################################################################
+# Write the stats to the games table
+# A stat can not exist without existing gamename. Was inserted by cipher loader.
+################################################################################
+sub write_stat {
+  my ($self, %o) = @_;
+  return $self->{dbh}->do(
+     "UPDATE games 
+      SET num_uplink = ?,
+          num_total  = ?
+      WHERE gamename = ?",
+      undef, $o{num_uplink}, $o{num_total}, lc $o{gamename});
 }
 
 ################################################################################
@@ -32,32 +69,10 @@ sub write_direct_beacons {
   my $self = shift;
   my $u = $self->{dbh}->do(
     "UPDATE serverlist 
-     SET b333ms = 0
-     WHERE beacon < datetime(?, 'unixepoch') AND b333ms", 
+     SET b333ms = CAST(0 AS BOOLEAN)
+     WHERE beacon < datetime(?, \'unixepoch\') AND b333ms", 
      undef, time-3600);
-     
-  # notify
   $self->log("unset", "Lost $u direct beacons.") if ($u > 0);
-}
-
-################################################################################
-# Write the stats to the games table
-# A stat can not exist without existing gamename. Was inserted by cipher loader.
-################################################################################
-sub write_stat {
-  my ($self, %opt) = @_;
-
-  # if it is already in the pending list, update it with a new challenge
-  my $u = $self->{dbh}->do(
-     "UPDATE games 
-      SET num_uplink = ?,
-          num_total  = ?
-      WHERE gamename = ?",
-      undef, $opt{num_uplink}, $opt{num_total}, lc $opt{gamename});
-      
-  # notify
-  $self->log("update", "Updated stats for $opt{gamename}.") if ($u > 0);
-
 }
 
 ################################################################################
@@ -66,7 +81,7 @@ sub write_stat {
 sub write_kfstats {
   my ($self, $h) = @_;
 
-  # check if entry already excists.
+  # check if entry already exists.
   my $u = $self->{dbh}->selectall_arrayref(
     "SELECT * FROM kfstats WHERE UTkey = ? ", undef, $h->{UTkey});
   
@@ -74,13 +89,11 @@ sub write_kfstats {
     $u = $self->{dbh}->do(
       "INSERT INTO kfstats (UTkey, Username) VALUES (?,?)", 
       undef, $h->{UTkey}, $h->{Username});
-                                   
-    # notify
     $self->log("kfnew", "New KF Player $h->{Username} added");
   }
 
   # update existing information
-  $u = $self->{dbh}->do("UPDATE kfstats SET 
+  $self->{dbh}->do("UPDATE kfstats SET 
       Username = ?, 
       CurrentVeterancy = ?, 
       TotalKills = ?, 

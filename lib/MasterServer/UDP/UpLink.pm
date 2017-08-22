@@ -2,11 +2,9 @@ package MasterServer::UDP::UpLink;
 
 use strict;
 use warnings;
-use Encode;
 use AnyEvent::Handle::UDP;
 use Socket qw(sockaddr_in inet_ntoa);
 use Exporter 'import';
-
 our @EXPORT = qw| send_heartbeats 
                   do_uplink 
                   process_udp_secure 
@@ -52,7 +50,7 @@ sub do_uplink {
   return unless (defined $ip && defined $port && $port > 0);
   
   # report uplinks to log
-  $self->log("uplink", "Uplink to Masterserver $ip:$port");
+  $self->log("uplink", "uplink to Masterserver $ip:$port");
   
   # connect with UDP server
   my $udp_client; $udp_client = AnyEvent::Handle::UDP->new(
@@ -77,44 +75,35 @@ sub do_uplink {
 ## Note: this replaces the \about\ query in the TCP handler!
 ################################################################################
 sub handle_status_query {
-  my ($self, $udp, $pa, $buf) = @_; 
-
-  # hotfix for one-word queries
-  $buf .= "\\dummy\\";
-  my %r;
-
-  $buf = encode('UTF-8', $buf);
-  $buf =~ s/\n//;
-  $buf =~ s/\\\\/\\undef\\/g; # where to add the +? seperate perl script!
-  $buf =~ s/\\([^\\]+)\\([^\\]+)/$r{$1}=$2/eg;
-
-  # response string
+  # self, handle, packed address, buffer
+  my ($self, $udp, $paddress, $buffer) = @_; 
+  my $rx = $self->data2hashref($buffer);
   my $response = "";
   
   # for compliance, query ids between 0-99
-  $query_id = ($query_id >= 99) ? 1 : ++$query_id;
+  $query_id = ($query_id >= 98) ? 1 : ++$query_id;
   my $sub_id = 1;
   
-  # get database info to present game stats as players, where num_total > 0
+  # get database info to present game stats, where num_total > 0
   my $maxgames = $self->check_cipher_count();
   my $gameinfo = $self->get_game_props(
-                    num_gt => 1, 
-                    sort => "num_total", 
-                    reverse => 1
+    num_gt => 1, 
+    sort => "num_total", 
+    reverse => 1
   );
 
   # secure challenge  
-  if (defined $r{secure}) {
+  if (defined $rx->{secure}) {
     $response .= "\\validate\\"
               .  $self->validate_string(
                     gamename => "333networks",
                     enctype  => 0,
-                    secure   => $r{secure}
+                    secure   => $rx->{secure}
                  );
   }
   
   # basic query
-  if (defined $r{basic} || defined $r{status}) {
+  if (defined $rx->{basic} || defined $rx->{status}) {
     $response .= "\\gamename\\333networks"
               .  "\\gamever\\$self->{short_version}"
               .  "\\location\\0"
@@ -122,37 +111,36 @@ sub handle_status_query {
   }
   
   # info query
-  if (defined $r{info} || defined $r{status}) {
-    $response .= "\\hostname\\$self->{masterserver_hostname}"
+  if (defined $rx->{info} || defined $rx->{status}) {
+    $response .= "\\hostname\\".($self->{masterserver_hostname} || "")
               .  "\\hostport\\$self->{listen_port}"
               .  "\\gametype\\MasterServer"
-              .  "\\numplayers\\". scalar @{$gameinfo}
-              .  "\\maxplayers\\$maxgames"
+              .  "\\mapname\\333networks"
+              .  "\\numplayers\\".(scalar @{$gameinfo} || 0)
+              .  "\\maxplayers\\".($maxgames || 0)
               .  "\\gamemode\\openplaying"
               .  "\\queryid\\$query_id.".$sub_id++;
   }
   
   # rules query
-  if (defined $r{rules} || defined $r{status}) {
-    $response .= "\\mutators\\333networks synchronization, master applet synchronization"
-              .  "\\AdminName\\$self->{masterserver_name}"
-              .  "\\AdminEMail\\$self->{masterserver_contact}"
+  if (defined $rx->{rules} || defined $rx->{status}) {
+    $response .= "\\mutators\\333networks synchronization, UCC Master applet synchronization, Display Stats As Players"
+              .  "\\AdminName\\".($self->{masterserver_name} || "")
+              .  "\\AdminEMail\\".($self->{masterserver_contact} || "")
               .  "\\queryid\\$query_id.".$sub_id++;
   }
   
   # players query
-  if (defined $r{players} || defined $r{status}) {
-    # list game stats as if they were players, with game description as 
-    # player_$, gamename as skin_$, total servers as frags_$ and number of 
-    # direct uplinks as deaths_$
+  if (defined $rx->{players} || defined $rx->{status}) {
+    # list game stats as if they were players. let the client figure out how
+    # to list this information on their website (hint: that's us)
     my $c = 0;
-
     foreach my $p (@{$gameinfo}) {
-      $c++; # count players
-      $response .= "\\player_$c\\$p->{description}"
-                .  "\\skin_$c\\$p->{gamename}"
-                .  "\\frags_$c\\$p->{num_total}"
-                .  "\\deaths_$c\\$p->{num_uplink}";
+      $response .= "\\player_$c\\".($p->{description} || "")
+                .  "\\team_$c\\"  .($p->{gamename}    || "")
+                .  "\\skin_$c\\"  .($p->{num_total}   || 0) . " total"
+                .  "\\mesh_$c\\"  .($p->{num_uplink}  || 0) . " direct";
+      $c++; # start with player_0, increment
     }
     $response .= "\\queryid\\$query_id.".$sub_id++;
   }
@@ -163,10 +151,10 @@ sub handle_status_query {
   # split the response in chunks of 512 bytes and send
   while (length $response > 512) {
     my $chunk = substr $response, 0, 512, '';
-    $udp->push_send($chunk, $pa);
+    $udp->push_send($chunk, $paddress);
   }
   # last <512 chunk
-  $udp->push_send($response, $pa);
+  $udp->push_send($response, $paddress);
 }
 
 1;

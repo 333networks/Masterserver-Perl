@@ -2,11 +2,9 @@ package MasterServer::Core::LoadConfig;
 
 use strict;
 use warnings;
-use AnyEvent;
+use DBI;
 use POSIX qw/strftime/;
 use Exporter 'import';
-use DBI;
-
 our @EXPORT = qw | load_applet_masters 
                      load_sync_masters
                       add_sync_master |;
@@ -17,53 +15,33 @@ our @EXPORT = qw | load_applet_masters
 sub load_applet_masters {
   my $self = shift;
 
-  # loop through config entries
+  # iterate through all games per entry
   foreach my $master_applet (@{$self->{master_applet}}) {
-    # master_applet contains
-    #   address --> domain
-    #   port    --> tcp port
-    #   games   --> array of gamenames
-    
-    # iterate through all games per entry
     for my $gamename (@{$master_applet->{games}}) {
       
       # resolve domain names
       my $applet_ip = $self->host2ip($master_applet->{address});
 
       # check if all credentials are valid
-      if ($applet_ip && 
-          $master_applet->{port} && 
-          $gamename) 
-      {
-        # add to database
+      if ($applet_ip && $master_applet->{port} && $gamename) {
         $self->add_master_applet(
             ip        => $applet_ip,
-            port      => $master_applet->{port},
+            hostport  => $master_applet->{port},
             gamename  => $gamename,
           );
-        
-        #log
         $self->log("add", "added applet $master_applet->{address}:$master_applet->{port} for $gamename");
-        
       } # else: insufficient info available
-      else {
-        $self->log("fail", "Could not add master applet: ".
-            ($applet_ip             || "unknown ip"). ", ".
-            ($master_applet->{port} || "0"). ", ".
-            ($gamename              || "game"). "."
-          );
-      }
+      else { $self->log("fail", "could not add master applet: ".
+              ($applet_ip             || "unknown ip"). ", ".
+              ($master_applet->{port} || "0"). ", ".
+              ($gamename              || "game"));}
     } # end gamename
   } # end master_applet
   
-  # reset added/updated time to last current time
-  $self->reset_master_applets();
-  
-  # clear out the original variable, we don't use it anymore
+  # reset added/updated time clear the applet list from memory
+  $self->reset_master_applets;
   $self->{master_applet} = ();
-  
-  # report
-  $self->log("info", "Applet database successfully updated!");
+  $self->log("info", "applet database successfully updated");
 
 }
 
@@ -76,18 +54,13 @@ sub load_applet_masters {
 sub load_sync_masters {
   my $self = shift;
 
-  # loop through config entries
+  # add config entries to database
   foreach my $sync_host (@{$self->{sync_masters}}) {
+    $self->add_sync_master($sync_host);}
   
-    # add them to database
-    $self->add_sync_master($sync_host);
-  }
-  
-  # clear out the original variable, we don't use it anymore
+  # clear list from memory
   $self->{sync_masters} = ();
-  
-  # report
-  $self->log("info", "Sync server database successfully updated!");
+  $self->log("info", "sync server database successfully updated");
   
 }
 
@@ -97,53 +70,18 @@ sub load_sync_masters {
 ################################################################################
 sub add_sync_master {
   my ($self, $sync_host) = @_;
-  
-  # sync_host contains
-  #   address --> domain
-  #   port    --> tcp port
-  #   beacon  --> udp port
-  
-  # resolve domain names
   my $sync_ip = $self->host2ip($sync_host->{address});
   
   # check if all credentials are valid
-  if ($sync_ip && 
-      $sync_host->{beacon} && 
-      $sync_host->{port}) 
-  {
-    # select sync master from serverlist
-    my $entry = $self->get_server(ip => $sync_ip, 
-                                  port => $sync_host->{beacon})->[0];
-
-    # was found, update the entry
-    if (defined $entry) {
-      # update the serverlist with 
-      my $sa = $self->update_server_list(
-        ip       => $sync_ip,
-        port     => $sync_host->{beacon},
-        hostport => $sync_host->{port},
-        gamename => "333networks",
-      );
-    }
-    # was not found, insert clean entry
-    else {
-      my $sa = $self->add_server_list(
-        ip       => $sync_ip,
-        port     => $sync_host->{beacon},
-        hostport => $sync_host->{port},
-        gamename => "333networks",
-      );
-      
-      #log
-      $self->log("add", "added sync $sync_host->{address}:$sync_host->{port},$sync_host->{beacon}");
-    }
+  if ($sync_ip && $sync_host->{beacon}) {
+    # add it to the pending list so it gets picked up with the "normal" status update
+    $self->insert_pending(ip => $sync_ip, port => $sync_host->{beacon});
+    $self->log("add", "added sync $sync_host->{address}:$sync_host->{beacon}");
   } # else: insufficient info available
-  else {
-    $self->log("fail", "Could not add sync master: ".
-        ($sync_ip             || "ip"). ", ".
-        ($sync_host->{beacon} || "0"). ", ".
-        ($sync_host->{port}   || "0"). "."
-      );
+  else { $self->log("fail", "failed to add sync master: ".
+          ($sync_host->{address}|| "domain"). ", ".
+          ($sync_ip             || "invalid ip"). ", ".
+          ($sync_host->{beacon} || "invalid beacon port") );
   }
 }
 

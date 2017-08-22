@@ -4,11 +4,11 @@ use strict;
 use warnings;
 use POSIX qw/strftime/;
 use Exporter 'import';
-
 our @EXPORT = qw| load_ciphers 
-                  secure_string 
-                  validate_string
-                  compare_challenge |;
+                  secure_string
+                  auth_browser
+                  auth_server
+                  validate_string  |;
 
 ################################################################################
 ## Supported Games list ciphers
@@ -24,13 +24,11 @@ sub load_ciphers {
   # first delete the old cipher database
   $self->clear_ciphers();
   
-  # start inserting ciphers (use transactions for slow systems)
+  # start inserting ciphers (bulk)
   $self->{dbh}->begin_work;
   
-  # iterate through the game list
+  # iterate through the game list and insert entries
   for (keys %{$self->{game}}) {
-    
-    # verify entries
     my %opt = ();
     $opt{gamename}      = lc $_;
     $opt{cipher}        = $self->{game}->{$_}->{key};
@@ -40,13 +38,14 @@ sub load_ciphers {
     # insert the game/cipher in the db or halt on error
     if ($self->insert_cipher(%opt) < 0) {
       $self->{dbh}->rollback;
+      $self->log("fatal", "could not update cipher database");
       $self->halt();
     }
   }
   
   # commit
   $self->{dbh}->commit;
-  $self->log("info", "Cipher database successfully updated!");
+  $self->log("info", "cipher database successfully updated");
 }
 
 ################################################################################
@@ -61,42 +60,51 @@ sub secure_string {
 }
 
 ################################################################################
-# authenticate the \validate\ response for the \secure\ challenge. 
+# authenticate browser response for secure/validate challenge
 # returns 1 on valid response, 0 on invalid
 ################################################################################
-sub compare_challenge {
-  my ($self, %o) = @_; 
-  
-  # debugging enabled? Then don't care about validation
+sub auth_browser {
+  my ($self, %o) = @_;
+  # exceptions (debugging, exclusion)
   return 1 if ($self->{debug_validate});
-
-  # ignore this game if asked to do so
-  if ($self->{ignore_browser_key} =~ m/$o{gamename}/i){
-    $self->log("ignore", "ignored beacon validation for $o{gamename}");
-    return 1;
-  } 
-
+  return 1 if ($self->{ignore_browser_key} =~ m/$o{gamename}/i);
+  
   # calculate validate string
   my $val = get_validate_string(
     $self->get_game_props(gamename => $o{gamename})->[0]->{cipher},
     $o{secure},
     $o{enctype} || 0
   );
-
   # return match or no match
-  return ($val eq ($o{validate} || ""));
+  return ( $o{validate} && ($val eq $o{validate}) );
 }
 
 ################################################################################
-# obtain the secure/validate challenge string
+# authenticate server response for secure/validate challenge
+# returns 1 on valid response, 0 on invalid
+################################################################################
+sub auth_server {
+  my ($self, %o) = @_;
+  # exceptions (debugging, exclusion)
+  return 1 if ($self->{debug_validate});
+  return 1 if ($self->{ignore_beacon_key} =~ m/$o{gamename}/i);
+  
+  # calculate validate string
+  my $val = get_validate_string(
+    $self->get_game_props(gamename => $o{gamename})->[0]->{cipher},
+    $o{secure},
+    $o{enctype} || 0
+  );
+  # return match or no match
+  return ( $o{validate} && ($val eq $o{validate}) );
+}
+
+################################################################################
+# calculate and return validate string
+# requires gamename
 ################################################################################
 sub validate_string {
   my ($self, %o) = @_;
-  
-  # secure string too long? discard as hack.
-  return 0 if (length $o{secure} > 6);
-
-  # calculate and return validate string
   return get_validate_string(
     $self->get_game_props(gamename => $o{gamename})->[0]->{cipher}, 
     $o{secure}, 
@@ -146,8 +154,8 @@ sub get_validate_string {
   my ($cipher_string, $secure_string, $enctype) = @_;
 
   # convert to array of characters
-  my @cip = split "", $cipher_string;
-  my @sec = split "", $secure_string;
+  my @cip = split "", $cipher_string || "";
+  my @sec = split "", $secure_string || "";
 
   # length of strings/arrays which should be 6
   my $sec_len = scalar @sec;
@@ -161,8 +169,8 @@ sub get_validate_string {
   my ($i,$j,$k,$l,$m,$n,$p);
 
   # too short or too long -- return empty string
-  return "" if ($sec_len <= 0 || $sec_len >= 32);
-  return "" if ($cip_len <= 0 || $cip_len >= 32);
+  return "" if ($sec_len <= 0 || $sec_len > 8);
+  return "" if ($cip_len <= 0 || $cip_len > 8);
   
   # temporary array with ascii characters
   my @enc;

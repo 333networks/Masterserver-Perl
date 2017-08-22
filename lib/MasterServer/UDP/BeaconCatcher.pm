@@ -5,8 +5,7 @@ use warnings;
 use AnyEvent::Handle::UDP;
 use Socket qw(sockaddr_in inet_ntoa);
 use Exporter 'import';
-
-our @EXPORT = qw| beacon_catcher on_beacon_receive|;
+our @EXPORT = qw| beacon_catcher recv_beacon |;
 
 ################################################################################
 ## Receive UDP beacons with \heartbeat\7778\gamename\ut\ format 
@@ -14,64 +13,86 @@ our @EXPORT = qw| beacon_catcher on_beacon_receive|;
 ################################################################################
 sub beacon_catcher {
   my $self = shift;
-  
-  # display that the server is up and listening for beacons
-  $self->log("info", "Listening for UDP beacons on port $self->{beacon_port}.");
-  
   # UDP server
-  my $udp_server; 
-     $udp_server = AnyEvent::Handle::UDP->new(
-  
-    # Bind to this host and use the port specified in the config file
+  my $udp_server; $udp_server = AnyEvent::Handle::UDP->new(
     bind => ['0.0.0.0', $self->{beacon_port}],
-  
-    # when datagrams are received
-    on_recv => sub {$self->on_beacon_receive(@_)},
+    on_recv => sub {$self->recv_beacon(@_)},
   );
-  
-  # allow object to exist beyond this scope. Objects have ambitions too.
+  $self->log("info", "listening for UDP beacons on port $self->{beacon_port}");
   return $udp_server;
 }
 
 ################################################################################
-## Determine the content of the received information and process it.
+# Receive Beacon (Spellchecker suggestion: "Bacon")
+# Check for heartbeats, determine if the server is already in the database
+# or trigger challenge with secure/validate if necessary.
 ################################################################################
-sub on_beacon_receive {
-  # $self, beacon address, handle, packed client address
-  my ($self, $b, $udp, $pa) = @_; 
+sub recv_beacon {
+  # $self, received data, handle, packed client address
+  my ($self, $buffer, $handle, $paddress) = @_;
 
   # unpack ip from packed client address
-  my ($port, $iaddr) = sockaddr_in($pa);
-  my $peer_addr      = inet_ntoa($iaddr);
+  my ($port, $iaddr) = sockaddr_in($paddress);
+  my $beacon_address = inet_ntoa($iaddr);
+
+  # determine and process heartbeat
+  if ($buffer =~ m/\\heartbeat\\/) {
   
-  # assume fraud/crash attempt if response too long
-  if (length $b > 64) {
-    # log
-    $self->log("attack","length exceeded in beacon: $peer_addr:$port sent $b");
+    # process data and get gamename info from the database
+    my $rx = $self->data2hashref($buffer);
     
-    # truncate and try to continue
-    $b = substr $b, 0, 64;
+    # some games use heartbeat = 0 because of default ports. Check.
+    if ($rx->{heartbeat} == 0 && $rx->{gamename}) {
+    
+      # overwrite the heartbeat port with a known default port, or zero
+      $rx->{heartbeat} = $self->get_game_props(gamename => $rx->{gamename})->[0]->{default_qport} || 0;
+      
+      # if no default port is listed, log and return. !! can spam the logs !!
+      if ($rx->{heartbeat} == 0) {
+        $self->log("invalid", "$beacon_address has no default heartbeat port listed");
+        return;
+      }
+    }
+
+    # update the timestamp in the database if the server already exists
+    my $upd = $self->update_server(
+      ip        => $beacon_address, 
+      port      => $rx->{heartbeat}, 
+      direct    => 1,
+    );
+    
+    # did the update succeed?
+    if ($upd > 0) {
+      # then we're done here. log and return.
+      $self->log("beacon", "heartbeat from $beacon_address, $rx->{heartbeat}". 
+        ($rx->{gamename} ? (" for $rx->{gamename}") : "") );
+    } 
+    # if no update occurred, query server
+    else {
+      # assign BeaconChecker to query the server for secure challenge and status
+      $self->query_udp_server(
+        ip    => $beacon_address,
+        port  => $rx->{heartbeat},
+        need_validate => 1,
+        direct_uplink => 1,
+      );
+    }
+    return;
   }
 
-  # FIXME: note to self: order is important when having combined queries!
-  # TODO:  find a more elegant and long-time solution for this.
-
-  # if this is a secure response, verify the response
-  $self->process_udp_validate($b, $peer_addr, $port, undef) 
-    if ($b =~ m/\\validate\\/);
-
-  # if a heartbeat format was detected...
-  $self->process_udp_beacon($udp, $pa, $b, $peer_addr, $port) 
-    if ($b =~ m/\\heartbeat\\/ && $b =~ m/\\gamename\\/);
+  # other masterservers check if we're still alive, respond with complient data
+  if ($buffer =~ m/\\(secure|basic|rules|info|players|status)\\/i) {
+    $self->handle_status_query($handle, $paddress, $buffer);
+    $self->log("uplink", "responding to $beacon_address, $port (sent $buffer)");
+    return;
+  }
   
-  # if other masterservers check if we're still alive
-  $self->handle_status_query($udp, $pa, $b, $peer_addr) 
-    if ($b =~ m/\\secure\\/ || 
-        $b =~ m/\\basic\\/  || 
-        $b =~ m/\\info\\/   || 
-        $b =~ m/\\rules\\/  ||
-        $b =~ m/\\players\\/|| 
-        $b =~ m/\\status\\/);
+  # Util::UDPBrowser (optional)
+  if ($buffer =~ m/^\\echo\\request/i) {
+    $self->udpbrowser_host($handle, $paddress, $buffer);
+    return;
+  }
+
 }
 
 1;
