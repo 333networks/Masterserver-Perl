@@ -1,16 +1,16 @@
-our %S = (
-%S, # do not overwrite other parts of the %S config hash
-
+our %S = (%S,
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 #
-# last change 24 Oktober 2016
+# last change 25 September 2017
+# Changelog 25 Sep 2017: Minor edit in comments. Supportedgames.pl will be completely
+#                        revised/reduced to only provide support for actually functional
+#                        games/protocols.
 #
 # Changelog 24 Okt 2016: Added/updated description for the 333networks synchronization
 #                        protocol and uplink setup. Works with MS-Perl 2.1.8 and above.
-# 
 #
-# Changelog  8 Nov 2015: migrated supportedgames.pl to database; after these are games
+# Changelog  8 Nov 2015: migrated supportedgames.pl to database; after these games
 #                        are loaded, the variables are cleared
 #
 # ChangeLog  5 Oct 2015: moved "enc_chars" to Core::Secure.pm, in preparation to 
@@ -28,7 +28,7 @@ our %S = (
 # opportunists to provide fake data or request the data without authorization. 
 #     See option "require_secure_beacons" in the configuration file.
 # 
-# For questions contact darkelarious@333networks.com or visit at irc.
+# For questions contact info@333networks.com or visit at irc.
 # irc.synirc.net #333networks
 #
 # NOTE: DUPLICATES MAY NOT EXIST. IN CASE OF DUPLICATES, ONE OF THE VALUES
@@ -39,7 +39,7 @@ our %S = (
 # Usage:
 # game code => {key => "game key", label => "game name label", port => "default port number"}
 game => {
-      "333networks"        => {key => "", label => "333networks MasterServer (Synchronization Protocol)"},
+      "333networks"        => {key => "", label => "333networks Masterserver Synchronization"},
       "12ironds"           => {key => "", label => "12Iron (DS)"},
       "12irondsam"         => {key => "", label => "12Iron  Automatch (DS)"},
       "2kboxingds"         => {key => "", label => "2K Boxing (DS)"},

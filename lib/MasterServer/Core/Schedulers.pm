@@ -18,7 +18,7 @@ sub long_periodic_tasks {
 
   return AnyEvent->timer (
     after     =>   90, # grace time receiving beacons
-    interval  => 3600,
+    interval  => 1800,
     cb        => sub {
 
       # update Killing Floor stats
@@ -37,8 +37,9 @@ sub long_periodic_tasks {
         
         # get serverlist
         my $masterserverlist = $self->get_server(
-          updated   => 7200,
           gamename  => "333networks",
+          $self->{firstrun} ? (
+            updated => 7200 ) : (),
         );
         
         foreach my $ms (@{$masterserverlist}) {
@@ -53,7 +54,7 @@ sub long_periodic_tasks {
       # do NOT reset $t, keep padding time -- you should not have more than 300
       # entries in applets/syncer in total anyway.
       
-      # Query Epic Games-based UCC applets periodically to get an additional
+      # Query Epic Games-alike applets periodically to get an additional
       # list of online UT, Unreal and other game servers. 
       if ($self->{master_applet_enabled}) {
         

@@ -70,8 +70,7 @@ sub do_uplink {
 }
 
 ################################################################################
-## Respond to status-like queries. Supported queries are basic, info, rules, 
-## players, status.
+## Respond to status-like queries. Supported: basic, info, rules, status.
 ## Note: this replaces the \about\ query in the TCP handler!
 ################################################################################
 sub handle_status_query {
@@ -124,31 +123,16 @@ sub handle_status_query {
   
   # rules query
   if (defined $rx->{rules} || defined $rx->{status}) {
-    $response .= "\\mutators\\333networks synchronization, UCC Master applet synchronization, Display Stats As Players"
+    $response .= "\\mutators\\333networks synchronization, UCC Master applet synchronization, Server Status Checker"
               .  "\\AdminName\\".($self->{masterserver_name} || "")
               .  "\\AdminEMail\\".($self->{masterserver_contact} || "")
               .  "\\queryid\\$query_id.".$sub_id++;
   }
-  
-  # players query
-  if (defined $rx->{players} || defined $rx->{status}) {
-    # list game stats as if they were players. let the client figure out how
-    # to list this information on their website (hint: that's us)
-    my $c = 0;
-    foreach my $p (@{$gameinfo}) {
-      $response .= "\\player_$c\\".($p->{description} || "")
-                .  "\\team_$c\\"  .($p->{gamename}    || "")
-                .  "\\skin_$c\\"  .($p->{num_total}   || 0) . " total"
-                .  "\\mesh_$c\\"  .($p->{num_uplink}  || 0) . " direct";
-      $c++; # start with player_0, increment
-    }
-    $response .= "\\queryid\\$query_id.".$sub_id++;
-  }
-  
+
   # close query with final tag
   $response .= "\\final\\";
   
-  # split the response in chunks of 512 bytes and send
+  # split the response in chunks of 512 characters and send
   while (length $response > 512) {
     my $chunk = substr $response, 0, 512, '';
     $udp->push_send($chunk, $paddress);

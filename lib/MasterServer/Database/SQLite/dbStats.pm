@@ -69,7 +69,7 @@ sub write_direct_beacons {
   my $self = shift;
   my $u = $self->{dbh}->do(
     "UPDATE serverlist 
-     SET b333ms = CAST(0 AS BOOLEAN)
+     SET b333ms = 0
      WHERE beacon < datetime(?, \'unixepoch\') AND b333ms", 
      undef, time-3600);
   $self->log("unset", "Lost $u direct beacons.") if ($u > 0);

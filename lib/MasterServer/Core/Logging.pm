@@ -18,15 +18,15 @@ sub error {
   # which one?
   switch ($error) {
     # connection timed out
-    case m/Connection timed out/i {$self->log("timeout", "on $instigator.");}
+    case m/Connection timed out/i {$self->log("timeout", "on $instigator");}
     # connection reset by peer
-    case m/Connection reset by peer/i {$self->log("reset", "on $instigator.");}
+    case m/Connection reset by peer/i {$self->log("reset", "on $instigator");}
     # connection refused
-    case m/Connection refused/i {$self->log("refused", "on $instigator.");}
+    case m/Connection refused/i {$self->log("refused", "on $instigator");}
     # no such device or address
-    case m/No such device or address/i {$self->log("nodevice", "on $instigator.");}
+    case m/No such device or address/i {$self->log("nodevice", "on $instigator");}
     # if all else fails
-    else {$self->log("error", "$error on $instigator.");}
+    else {$self->log("error", "$error on $instigator");}
   }
 }
 

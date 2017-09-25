@@ -54,8 +54,8 @@ sub valid_address {
   my $val_addr = ($a =~ '^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$') if $a;
   my $val_port = ($p =~  m/^\d+$/ && 0 < $p && $p <= 65535) if $p;
   
-  # exclude addresses where we don't want people sniffing
-  for (qw|192.168.(.\d*).(.\d*) 127.0.(.\d*).(.\d*) 10.0.(.\d*).(.\d*)|){$val_addr = 0 if ($a =~ m/$_/)}
+  # exclude local addresses
+  if ($a =~ m/192.168.(\d).(\d)/ || $a =~ m/127.0.(\d).(\d)/ || $a =~ m/10.0.(\d).(\d)/) { $val_addr = 0; }
   
   # only return true if both are valid  
   return ($val_addr && $val_port);

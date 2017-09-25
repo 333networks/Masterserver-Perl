@@ -34,6 +34,9 @@ sub recv_beacon {
   # unpack ip from packed client address
   my ($port, $iaddr) = sockaddr_in($paddress);
   my $beacon_address = inet_ntoa($iaddr);
+  
+  # ignore localhost and restricted IPs like localhost
+  return unless $self->valid_address($beacon_address, $port);
 
   # determine and process heartbeat
   if ($buffer =~ m/\\heartbeat\\/) {

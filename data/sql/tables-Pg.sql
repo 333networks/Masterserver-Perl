@@ -101,4 +101,3 @@ CREATE TABLE kfstats(
   GamesWon          INTEGER NOT NULL DEFAULT 0,
   GamesLost         INTEGER NOT NULL DEFAULT 0
 );
-

@@ -24,13 +24,13 @@ AUTHOR
 
 REQUIREMENTS
 
-  - Postgresql, MySQL or SQLite3
+  - Postgresql, SQLite3
   - Perl 5.10 or above
   - The following CPAN modules:
       AnyEvent
       AnyEvent::Handle::UDP
       DBI
-      DBD::Pg / DBD::SQLite / DBD::mysql
+      DBD::Pg / DBD::SQLite
       Encode
       Exporter
       IP::Country::Fast
@@ -44,7 +44,7 @@ INSTALL
   THE MASTER SERVER IS WRITTEN ON LINUX. IF YOU WANT TO RUN THE SOFTWARE IN 
   MICROSOFT WINDOWS OR APPLE OSX, IT WILL NOT WORK WITHOUT MODIFICATIONS.
   
-  Download the masterserver files from our GIT repository (or zip) and extract
+  Download the masterserver files from our git repository (or zip) and extract
   them to your favorite server directory.
   
   The masterserver stores server addresses in the database. This database must
@@ -52,7 +52,8 @@ INSTALL
   file with read/write access. The tables to be created can be found in the 
   "data/sql" folder in the tables-Pg/SQLite/mysql.sql file. Choose your 
   preferred database driver and create the tables by importing the SQL file or
-  by manually creating the tables with your SQL shell.
+  by manually creating the tables with your SQL shell. SQLite users can use the
+  included util/create-sqlite-database.sh to create their database.
   
   This repository consists of Perl modules and is run in terminal. The software
   utilizes UDP and TCP connections to receive and send information about game
@@ -207,7 +208,7 @@ CONFIGURATION
   do not want other people querying your masterserver, then why are you running
   a masterserver in the first place?
   
-  We do not want authorized people mass-spamming our (or other's) masterservers 
+  We do not want authorized people spamming our (or other's) masterservers 
   with sync request to determine whether the server is online (yes, this 
   actually happens -- use the \status\ query for that!) or to keep the list 
   unnecessary updated. Sync requests should not be executed more than 1-2 times 
@@ -219,12 +220,12 @@ RUNNING
 
   After all CPAN modules have been installed and all options have been reviewed
   in the configuration file, the masterserver can be started with the following 
-  command from within the root directory of this folder:
+  command from within the util directory of this folder:
    
-    screen -dmS "masterserver" ./util/masterserver.pl
+    screen -dmS "masterserver" ./masterserver.pl
   
-  You can also choose to run the masterserver with ./util/masterserver without
-  the use of a terminal multiplexer, for example for debugging purposes or a
+  You can also choose to run the masterserver with ./masterserver without the 
+  use of a terminal multiplexer, for example for debugging purposes or a
   dry-run to test if your settings are properly configured.
   
   The masterserver works great in combination with one of the MasterServer 
@@ -249,11 +250,20 @@ TOOLS
   included in the repository. Poor documentation is included in the scripts and
   in the required files themselves. Do not forget to change database settings 
   per tool. Expert knowledge required!
+  These tools will move to a new repository on our git soon.
 
 KNOWN ISSUES
 
   There are a few known issues that will be resolved in future versions. The
   following issues are listed and do not need to be reported.
+  
+  This README file is unnecessary long. Over the time we have added a lot of
+  functions and therefore a lot of documentation. This README file becomes 
+  bloated with things everybody already knows or does not intend to use. There 
+  is an initiative to write the masterserver documentation in a single document
+  that is more focused on comprehensively outlining the fundamentals of the 
+  masterserver, its functions and how to use it. For now, we are stuck with this
+  in-depth, redundant and waaay too long README file.
   
   MySQL has not been tested with this masterserver version. When any database
   other than Postgresql or SQLite3 is selected, the masterserver may crash. 
@@ -275,34 +285,9 @@ KNOWN ISSUES
   for 333networks and affiliated servers do not suffer from this problem.
 
   No servers found after syncing with 333networks or others: the syncing 
-  protocol also requires authentication. We do not want people mass-spamming 
-  our (or other's) masterservers with unnecessarily fast sync request. If you 
-  want to sync with us, please email us on info@333networks.com
+  protocol also requires authentication. We do not want people spamming our 
+  (or other's) masterservers with unnecessarily fast sync request. If you want 
+  to sync with us, please email us on info@333networks.com
 
 COPYING
-
-  Copyright (c) 2005-2017 Darkelarious & 333networks.com
-
-  Permission is hereby granted, free of charge, to any person obtaining
-  a copy of this software and associated documentation files (the
-  "Software"), to deal in the Software without restriction, including
-  without limitation the rights to use, copy, modify, merge, publish,
-  distribute, sublicense, and/or sell copies of the Software, and to
-  permit persons to whom the Software is furnished to do so, subject to
-  the following conditions:
-
-  The above copyright notice and this permission notice shall be included
-  in all copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-  
-  All Unreal Tournament related materials are based on Epic Games' Unreal 
-  Tournament. UNREAL (c)1999 Epic Megagames, Inc. All Rights Reserved. 
-  Distributed by GT Interactive Software, Inc. under license. UNREAL and the 
-  UNREAL logo are registered trademarks of Epic Megagames, Inc.
+  See file COPYING

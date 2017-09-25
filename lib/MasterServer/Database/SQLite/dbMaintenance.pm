@@ -1,4 +1,4 @@
-package MasterServer::Database::Pg::dbMaintenance;
+package MasterServer::Database::SQLite::dbMaintenance;
 
 use strict;
 use warnings;

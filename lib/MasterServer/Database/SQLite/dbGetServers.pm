@@ -31,7 +31,7 @@ sub get_server {
     $o{before}      ? ('updated < datetime(?, \'unixepoch\')' => (time-$o{before}))  : (),
     
     # never process blacklisted servers, unless explicitly specified
-    ('blacklisted = CAST(? AS BOOLEAN)' => $o{blacklisted}),
+    ('blacklisted = ?' => $o{blacklisted}),
   );
   
   my @select = ( qw|

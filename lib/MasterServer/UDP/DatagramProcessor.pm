@@ -77,14 +77,12 @@ sub process_datagram {
         enctype   => $rx->{enctype},
         validate  => $rx->{validate},
       );
-      $self->log("secure","$o{ip}, $o{port} failed validation for ". 
-                          ($rx->{gamename} || "empty_gamename")
-        ."; sent: '".     ($o{secure}      || "empty_secure")
-        ."', expected '". ($val_str        || "empty_v_string")
-        ."', got '".      ($rx->{validate} || "empty_r_validate")
-        ."' with cipher '". ($self->get_game_props(gamename => $rx->{gamename})->[0]->{cipher} || "empty_cipher")
-        ."'"
-      );
+      $self->log("secure","$o{ip}, $o{port} failed validation for ".($rx->{gamename} || "empty_gamename") );
+      $self->log("secure", 
+        "cipher: "   .($self->get_game_props(gamename => $rx->{gamename})->[0]->{cipher} || "empty_cipher") . ", "
+       ."secure: "   .($o{secure}      || "empty_secure"). ", "
+       ."expected: " .($val_str        || "empty_v_string"). ", "
+       ."received: " .($rx->{validate} || "empty_r_validate"));
 
       # remove addresses anyway to prevent error spamming in log
       $self->remove_pending(ip => $o{ip}, port => $o{port});
@@ -143,7 +141,7 @@ sub unify_information {
   my %uei; # unified extended info
   my @upi; # unified  player  info
   
-  # FIXME unify with player playername name
+  # FIXME unify with {player playername name, other keys/columns}
 
   # first process all available player entries
   for (my $i = 0; exists $rx->{"player_$i"}; $i++) {

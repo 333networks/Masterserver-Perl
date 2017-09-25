@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 
 package MasterServer;
-
 use strict;
 use warnings;
 use Cwd 'abs_path';
@@ -9,7 +8,6 @@ use Cwd 'abs_path';
 our $ROOT;
 BEGIN { ($ROOT = abs_path $0) =~ s{/util/masterserver\.pl$}{}; }
 use lib $ROOT.'/lib';
-
 use MasterServer;
 
 our %S;

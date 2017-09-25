@@ -16,8 +16,8 @@ CREATE TABLE serverlist(
   hostname    TEXT,
   hostport    INTEGER       DEFAULT 0,
   country     TEXT,
-  b333ms      BOOLEAN       DEFAULT FALSE,
-  blacklisted BOOLEAN       DEFAULT FALSE,
+  b333ms      INTEGER       DEFAULT 0,
+  blacklisted INTEGER       DEFAULT 0,
   added       timestamptz   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   beacon      timestamptz   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated     timestamptz   NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -43,7 +43,7 @@ CREATE TABLE pending(
   added     timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE utserver_info(
+CREATE TABLE extended_info(
   server_id           INTEGER PRIMARY KEY AUTOINCREMENT,
   minnetver           TEXT,
   location            TEXT,
@@ -72,7 +72,7 @@ CREATE TABLE utserver_info(
   FOREIGN KEY(server_id) REFERENCES serverlist(id)
 );
 
-CREATE TABLE utplayer_info(
+CREATE TABLE player_info(
   server_id INTEGER NOT NULL,
   player    TEXT    DEFAULT 'Player',
   team      TEXT,

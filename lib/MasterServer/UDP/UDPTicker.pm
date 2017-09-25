@@ -30,8 +30,9 @@ sub udp_ticker {
 
   # tick through pending list and server list
   my $server_info = AnyEvent->timer (
-    after     => 120, # grace time receiving beacons
-    interval  => 0.2, # ~5 servers/s
+    after     => 120, # grace time receiving beacons -- MUST be the last 
+                      # function to start as it controls the first_run parameter
+    interval  => 0.2, # ~5 servers/second
     cb        => sub {
       # reset counters if minimum time before reset passed + list processed
       if ($self->{firstrun}) {

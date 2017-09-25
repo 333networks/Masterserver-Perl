@@ -4,6 +4,13 @@ AUTHOR
   darkelarious@333networks.com
 
 CHANGELOG
+2.4.1 - 25 Sep 2017
+  * player uplink query removed, generates too much unnecessary traffic
+  * reject local IPs like 192.168.*.*, 10.0.*.* and 127.0.*.*
+  * detailed and comprehensible information for every game server, not just UT 
+  * new masterservers automatically synchronize with each other, two-way
+  * numerous bug fixes including SQLite 'boolean' behavior
+
 2.4.0 - 22 Aug 2017
   * fundamental changes in behaviour
   * no longer authenticate on the uplink port, but query port

@@ -44,7 +44,7 @@ sub update_server {
     $o{gamever}  ? ( 'gamever = ?' => $o{gamever})     : (),
     $o{hostname} ? ('hostname = ?' => $o{hostname})    : (),
     $o{hostport} ? ('hostport = ?' => $o{hostport})    : (),
-    $o{direct}   ? (  'b333ms = CAST(? AS BOOLEAN)' => $o{direct})  : (),
+    $o{direct}   ? (  'b333ms = ?' => $o{direct})      : (),
     $o{direct}   ? (  'beacon = datetime(?, \'unixepoch\')'    => $o{updated}) : (),
     $o{updated}  ? ( 'updated = datetime(?, \'unixepoch\')'    => $o{updated}) : (),
   );
