@@ -27,13 +27,13 @@ sub version {
   $self->{build_type}     = "333networks Masterserver-Perl Multidb";
   
   # version
-  $self->{build_version}  = "2.4.1";
+  $self->{build_version}  = "2.4.2";
   
   # short version for uplinks
   $self->{short_version}  = "MS-perl $self->{build_version}";
   
   # date yyyy-mm-dd
-  $self->{build_date}     = "2017-09-25";
+  $self->{build_date}     = "2017-09-30";
   
   #author, email
   $self->{build_author}   = "Darkelarious, darkelarious\@333networks.com";

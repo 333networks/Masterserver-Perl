@@ -63,7 +63,7 @@ sub log {
   $SIG{__WARN__} = undef;
 
   chomp $msg;
-  $msg =~ s/\n/\n  | /g;
+  $msg =~ s/\n/ /g;
   if($logfile && open my $F, '>>:utf8', $logfile) {
     flock $F, 2;
     seek $F, 0, 2;

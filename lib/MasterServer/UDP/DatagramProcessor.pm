@@ -14,7 +14,7 @@ sub process_datagram {
   my $rx = $self->data2hashref($o{rxbuf});
 
   # can not proceed if validate was provided, but not gamename
-  return 0 if ( $rx->{validate} && not($rx->{gamename}) );
+  return 0 unless $rx->{gamename};
   # do not process data if no hostport was provided.
   return 0 unless $rx->{hostport};
 
