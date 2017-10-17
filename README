@@ -25,7 +25,7 @@ AUTHOR
 REQUIREMENTS
 
   - Postgresql, SQLite3
-  - Perl 5.10 or above
+  - Perl 5.22 or above
   - The following CPAN modules:
       AnyEvent
       AnyEvent::Handle::UDP
@@ -256,6 +256,14 @@ KNOWN ISSUES
 
   There are a few known issues that will be resolved in future versions. The
   following issues are listed and do not need to be reported.
+  
+  Memory Expansion
+  On some operating systems and with certain CPAN module versions, the memory
+  usages keeps increasing to the point where the entire OS crashes or freezes.
+  For some CPAN modules has been confirmed that they contribute to this. This
+  goes for AnyEvent::UDP::Handle v0.048 on Ubuntu Server 14.04. Try downgrading
+  to version v0.043 to temporary solve the problem. This will reduce if not
+  stop the memory increase.
   
   This README file is unnecessary long. Over the time we have added a lot of
   functions and therefore a lot of documentation. This README file becomes 
