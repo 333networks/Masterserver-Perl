@@ -103,7 +103,7 @@ sub process_applet {
   $self->{dbh}->commit;
 
   # update time if successful applet query
-  $self->update_master_applet(ip => $ms->{ip}, port => $ms->{hostport}, gamename => $ms->{gamename} ) 
+  $self->update_master_applet(ip => $ms->{ip}, hostport => $ms->{hostport}, gamename => $ms->{gamename} ) 
     if ($tot > 0);
 
   # print findings
