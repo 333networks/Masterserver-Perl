@@ -1,6 +1,11 @@
+# MasterServer-Perl
+
+Repository for the 333networks MasterServer written in Perl.
+
+
 =========
 
-DESCRIPTION
+# DESCRIPTION
   
   This repository contains software to host a MasterServer for a variety of 
   legacy games. The software was written Darkelarious to soften the effects of 
@@ -14,15 +19,14 @@ DESCRIPTION
   More information about the masterserver and variations on the protocol by
   333networks can be found online at 
         http://333networks.com/masterserver
-        http://wiki.333networks.com/index.php/MasterServer
 
-AUTHOR
+# AUTHOR
 
   Darkelarious
   http://333networks.com
   darkelarious@333networks.com
 
-REQUIREMENTS
+# REQUIREMENTS
 
   - Postgresql, SQLite3
   - Perl 5.22 or above
@@ -33,13 +37,13 @@ REQUIREMENTS
       DBD::Pg / DBD::SQLite
       Encode
       Exporter
-      IP::Country::Fast
+      IP::Country::Fast;
       Socket
       Switch
       JSON
   - screen (or another terminal multiplexer, optional)
 
-INSTALL
+# INSTALL
 
   THE MASTER SERVER IS WRITTEN ON LINUX. IF YOU WANT TO RUN THE SOFTWARE IN 
   MICROSOFT WINDOWS OR APPLE OSX, IT WILL NOT WORK WITHOUT MODIFICATIONS.
@@ -60,7 +64,7 @@ INSTALL
   servers. Carefully read through the code and documentation before you start 
   randomly querying other game servers and/or masterservers.
   
-CONFIGURATION
+# CONFIGURATION
 
   The 333networks masterserver comes with options. These options are found in
   configuration file "data/masterserver-config.pl". Comments in that file give
@@ -186,7 +190,7 @@ CONFIGURATION
   above. If "beacon_checker_enabled" is disabled, this function will NOT work 
   properly. Enable/Disable with "master_applet_enabled".
   
-  Synchronization settings  
+  Synchronization settings
   
   Synchronization between masterservers allows you to receive the list from 
   other masterservers. In return and to make this communication two-way, the
@@ -216,7 +220,7 @@ CONFIGURATION
   
   If you want to sync with us, please email us on info@333networks.com
   
-RUNNING
+# RUNNING
 
   After all CPAN modules have been installed and all options have been reviewed
   in the configuration file, the masterserver can be started with the following 
@@ -242,7 +246,7 @@ RUNNING
   333networks is not responsible for your masterserver querying (or spamming)
   game servers and/or masterservers. Your configuration is YOUR responsibility!
 
-TOOLS
+# TOOLS
 
   In the "util/tools" folder, a few handy tools are included. In general, it is
   not necessary to use these tools. While debugging and writing new features for
@@ -252,7 +256,7 @@ TOOLS
   per tool. Expert knowledge required!
   These tools will move to a new repository on our git soon.
 
-KNOWN ISSUES
+# KNOWN ISSUES
 
   There are a few known issues that will be resolved in future versions. The
   following issues are listed and do not need to be reported.
@@ -297,5 +301,5 @@ KNOWN ISSUES
   (or other's) masterservers with unnecessarily fast sync request. If you want 
   to sync with us, please email us on info@333networks.com
 
-COPYING
+# COPYING
   See file COPYING
